@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to Kuroku (黒録) will be documented in this file.
+All notable changes to Panovault will be documented in this file.
 
 ## [v1.4.4] - 2026-10-26
 ### ⚡ Pembaruan Sumber & Penyederhanaan:
@@ -55,7 +55,7 @@ All notable changes to Kuroku (黒録) will be documented in this file.
 - 📱 **Fix Library UI & Filter Chips**: Memperbaiki AppBar dan tata letak chip kategori filter (`Favorit`, `Didownload (Offline)`, `Update Terbaru`) yang sebelumnya hilang/rusak akibat layout exception `unbounded height` di `PreferredSize` dan tertimpa status bar.
 - 👁️ **High-Contrast Dark Theme Chips**: Label teks dan ikon chip kategori kini tampil kontras dan tajam pada tema gelap tanpa glitch visual.
 - 🎯 **Verifikasi Resume Tengah Chapter**: Pengujian e2e membuktikan posisi scroll di tengah-tengah panel gambar Webtoon tersimpan dan dipulihkan secara 1:1 saat kembali lewat History atau tombol Continue.
-- 🧪 **E2E Visual Regression Harness**: Penyediaan preview harness pengujian headless Skia untuk kestabilan visual UI antarmuka Kuroku.
+- 🧪 **E2E Visual Regression Harness**: Penyediaan preview harness pengujian headless Skia untuk kestabilan visual UI antarmuka Panovault.
 
 ## [v1.3.7] - 2026-10-24
 ### ✨ Fitur Baru & Peningkatan:
