@@ -126,7 +126,7 @@ class WeebCentralParser extends MangaParser {
         : '&sort=Latest+Updates&order=Descending';
 
     try {
-      final res = await KurokuHttpClient.instance.get<String>(
+      final res = await PanovaultHttpClient.instance.get<String>(
         url,
         headers: headers,
         responseType: ResponseType.plain,
@@ -180,7 +180,7 @@ class WeebCentralParser extends MangaParser {
   Future<Manga> getDetails(Manga manga) async {
     final mangaId = manga.url;
     try {
-      final res = await KurokuHttpClient.instance.get<String>(
+      final res = await PanovaultHttpClient.instance.get<String>(
         'https://$domain/series/$mangaId',
         headers: headers,
         responseType: ResponseType.plain,
@@ -233,7 +233,7 @@ class WeebCentralParser extends MangaParser {
     final mangaId = manga.url;
     try {
       // 1. Fetch full chapter list
-      final res = await KurokuHttpClient.instance.get<String>(
+      final res = await PanovaultHttpClient.instance.get<String>(
         'https://$domain/series/$mangaId/full-chapter-list',
         headers: headers,
         responseType: ResponseType.plain,
@@ -286,7 +286,7 @@ class WeebCentralParser extends MangaParser {
     final url = 'https://$domain/chapters/$chapterId/images?is_prev=False&reading_style=long_strip';
 
     try {
-      final res = await KurokuHttpClient.instance.get<String>(
+      final res = await PanovaultHttpClient.instance.get<String>(
         url,
         headers: headers,
         responseType: ResponseType.plain,

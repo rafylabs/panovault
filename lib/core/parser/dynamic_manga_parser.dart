@@ -194,7 +194,7 @@ class DynamicMangaParser extends MangaParser {
       if (endpointTemplate == null) return [];
 
       final url = _formatUrl(endpointTemplate, page: page, query: query);
-      final res = await KurokuHttpClient.instance.get<dynamic>(
+      final res = await PanovaultHttpClient.instance.get<dynamic>(
         url,
         headers: headers,
         responseType: ResponseType.json,
@@ -263,7 +263,7 @@ class DynamicMangaParser extends MangaParser {
             : 'https://$domain/manga?page=$page';
       }
 
-      final res = await KurokuHttpClient.instance.get<String>(
+      final res = await PanovaultHttpClient.instance.get<String>(
         url,
         headers: headers,
         responseType: ResponseType.plain,
@@ -351,7 +351,7 @@ class DynamicMangaParser extends MangaParser {
     }
 
     try {
-      final res = await KurokuHttpClient.instance.get<String>(
+      final res = await PanovaultHttpClient.instance.get<String>(
         url,
         headers: headers,
         responseType: ResponseType.plain,
@@ -403,7 +403,7 @@ class DynamicMangaParser extends MangaParser {
   @override
   Future<Manga> getDetails(Manga manga) async {
     try {
-      final res = await KurokuHttpClient.instance.get<String>(
+      final res = await PanovaultHttpClient.instance.get<String>(
         manga.url,
         headers: headers,
         responseType: ResponseType.plain,
@@ -454,7 +454,7 @@ class DynamicMangaParser extends MangaParser {
         try {
           final cleanMangaId = manga.id.replaceFirst('${id}_', '');
           final url = _formatUrl(api['chaptersEndpoint'] as String, mangaId: cleanMangaId);
-          final res = await KurokuHttpClient.instance.get<dynamic>(
+          final res = await PanovaultHttpClient.instance.get<dynamic>(
             url,
             headers: headers,
             responseType: ResponseType.json,
@@ -500,7 +500,7 @@ class DynamicMangaParser extends MangaParser {
 
     // 2. Custom HTML Selector / Legacy Chapters
     try {
-      final res = await KurokuHttpClient.instance.get<String>(
+      final res = await PanovaultHttpClient.instance.get<String>(
         manga.url,
         headers: headers,
         responseType: ResponseType.plain,
@@ -561,7 +561,7 @@ class DynamicMangaParser extends MangaParser {
         try {
           final cleanChapterId = chapter.id.split('_').last;
           final url = _formatUrl(api['pagesEndpoint'] as String, chapterId: cleanChapterId);
-          final res = await KurokuHttpClient.instance.get<dynamic>(
+          final res = await PanovaultHttpClient.instance.get<dynamic>(
             url,
             headers: headers,
             responseType: ResponseType.json,
@@ -598,7 +598,7 @@ class DynamicMangaParser extends MangaParser {
 
     // 2. Custom HTML Selector / Legacy Pages
     try {
-      final res = await KurokuHttpClient.instance.get<String>(
+      final res = await PanovaultHttpClient.instance.get<String>(
         chapter.url,
         headers: headers,
         responseType: ResponseType.plain,

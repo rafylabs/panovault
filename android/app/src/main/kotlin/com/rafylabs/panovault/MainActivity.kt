@@ -1,4 +1,4 @@
-package com.rafylabs.kuroku
+package com.rafylabs.panovault
 
 import android.content.Intent
 import android.net.Uri
@@ -10,7 +10,7 @@ import io.flutter.plugin.common.MethodChannel
 import java.io.File
 
 class MainActivity : FlutterActivity() {
-    private val CHANNEL = "com.rafylabs.kuroku/updater"
+    private val CHANNEL = "com.rafylabs.panovault/updater"
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)

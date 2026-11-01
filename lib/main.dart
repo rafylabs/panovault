@@ -33,17 +33,17 @@ void main() async {
     ),
   );
 
-  runApp(const KurokuApp());
+  runApp(const PanovaultApp());
 }
 
-class KurokuApp extends StatelessWidget {
-  const KurokuApp({super.key});
+class PanovaultApp extends StatelessWidget {
+  const PanovaultApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return ProviderScope(
       child: MaterialApp(
-        title: 'Kuroku',
+        title: 'Panovault',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.lightTheme,
         darkTheme: AppTheme.darkTheme,

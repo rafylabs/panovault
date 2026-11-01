@@ -160,7 +160,7 @@ class DownloadManager {
       final coverFile = File(p.join(mangaDir.path, 'cover.jpg'));
       if (!await coverFile.exists() && manga.coverUrl.isNotEmpty && manga.coverUrl.startsWith('http')) {
         try {
-          await KurokuHttpClient.instance.dio.download(
+          await PanovaultHttpClient.instance.dio.download(
             manga.coverUrl,
             coverFile.path,
             options: Options(headers: parser.headers),
@@ -180,7 +180,7 @@ class DownloadManager {
         final file = File(filePath);
 
         if (!await file.exists() || await file.length() == 0) {
-          await KurokuHttpClient.instance.dio.download(
+          await PanovaultHttpClient.instance.dio.download(
             page.url,
             filePath,
             options: Options(

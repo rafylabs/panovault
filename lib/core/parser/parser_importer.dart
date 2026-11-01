@@ -90,7 +90,7 @@ class ParserImporter {
         ? Map<String, dynamic>.from(config.customSelectors!)
         : <String, dynamic>{};
 
-    baseMap['kuroku_spec_version'] = currentSpecVersion;
+    baseMap['panovault_spec_version'] = currentSpecVersion;
     baseMap['id'] = config.id.replaceFirst('custom_', '');
     baseMap['name'] = config.name;
     baseMap['domain'] = config.domain;
@@ -107,7 +107,7 @@ class ParserImporter {
       throw const FormatException('URL must start with http:// or https://');
     }
 
-    final res = await KurokuHttpClient.instance.get<String>(
+    final res = await PanovaultHttpClient.instance.get<String>(
       cleanUrl,
       responseType: ResponseType.plain,
     );
@@ -122,7 +122,7 @@ class ParserImporter {
   /// Sample HTML selector template for user guidance.
   static String get sampleHtmlTemplate {
     return '''{
-  "kuroku_spec_version": 1,
+  "panovault_spec_version": 1,
   "id": "contoh_komik",
   "name": "Contoh Komik",
   "domain": "contohkomik.com",
@@ -151,7 +151,7 @@ class ParserImporter {
   /// Sample REST API template for user guidance.
   static String get sampleRestTemplate {
     return '''{
-  "kuroku_spec_version": 1,
+  "panovault_spec_version": 1,
   "id": "contoh_api",
   "name": "Contoh REST API",
   "domain": "api.contoh.com",

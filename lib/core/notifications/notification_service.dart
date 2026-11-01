@@ -60,7 +60,7 @@ class NotificationService {
     await init();
 
     const androidDetails = AndroidNotificationDetails(
-      'kuroku_chapter_updates',
+      'panovault_chapter_updates',
       'Chapter Updates',
       channelDescription: 'Notifications for newly released manga chapters',
       importance: Importance.high,

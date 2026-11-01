@@ -21,7 +21,14 @@ class AppDatabase {
 
   Future<Database> _initDatabase() async {
     final docsDir = await getApplicationDocumentsDirectory();
-    final dbPath = p.join(docsDir.path, 'kuroku_local.db');
+    final legacyPath = p.join(docsDir.path, 'kuroku_local.db');
+    final dbPath = p.join(docsDir.path, 'panovault_local.db');
+
+    if (!File(dbPath).existsSync() && File(legacyPath).existsSync()) {
+      try {
+        await File(legacyPath).copy(dbPath);
+      } catch (_) {}
+    }
 
     return await openDatabase(
       dbPath,

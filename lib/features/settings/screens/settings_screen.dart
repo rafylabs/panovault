@@ -115,21 +115,21 @@ class SettingsScreen extends ConsumerWidget {
                       ),
                       const SizedBox(height: 8),
                       const Text(
-                        'Kuroku Flutter is configured with standard zero-restricted entitlements and can be installed without the Apple App Store:',
+                        'Panovault Flutter is configured with standard zero-restricted entitlements and can be installed without the Apple App Store:',
                         style: TextStyle(fontSize: 13, color: Colors.grey),
                       ),
                       const SizedBox(height: 16),
                       _buildStep(
                         '1. AltStore / SideStore',
-                        'Download the Kuroku.ipa file from GitHub Releases, open AltStore or SideStore on your iPhone/iPad, click "+" and select Kuroku.ipa. Sign with your free Apple ID.',
+                        'Download the Panovault.ipa file from GitHub Releases, open AltStore or SideStore on your iPhone/iPad, click "+" and select Panovault.ipa. Sign with your free Apple ID.',
                       ),
                       _buildStep(
                         '2. TrollStore (iOS 14.0 - 17.0)',
-                        'Open TrollStore, tap "+" and install Kuroku.ipa directly. No 7-day expiration or revocations.',
+                        'Open TrollStore, tap "+" and install Panovault.ipa directly. No 7-day expiration or revocations.',
                       ),
                       _buildStep(
                         '3. Sideloadly / Scarlet',
-                        'Drag Kuroku.ipa into Sideloadly on Mac or PC, enter your Apple ID, and install via USB or Wi-Fi.',
+                        'Drag Panovault.ipa into Sideloadly on Mac or PC, enter your Apple ID, and install via USB or Wi-Fi.',
                       ),
                       const SizedBox(height: 12),
                       Container(
@@ -153,7 +153,7 @@ class SettingsScreen extends ConsumerWidget {
           ListTile(
             leading: const Icon(Icons.badge_outlined),
             title: const Text('Bundle Identifier'),
-            subtitle: const Text('com.rafylabs.kuroku'),
+            subtitle: const Text('com.rafylabs.panovault'),
           ),
           const Divider(),
 
@@ -246,7 +246,7 @@ class SettingsScreen extends ConsumerWidget {
             onTap: () async {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
-                  content: Text('Memeriksa versi terbaru Kuroku di GitHub...'),
+                  content: Text('Memeriksa versi terbaru Panovault di GitHub...'),
                   duration: Duration(seconds: 1),
                 ),
               );
@@ -259,7 +259,7 @@ class SettingsScreen extends ConsumerWidget {
               } else {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
-                    content: Text('Kuroku sudah menggunakan versi terbaru (v${AppUpdateService.currentVersion})'),
+                    content: Text('Panovault sudah menggunakan versi terbaru (v${AppUpdateService.currentVersion})'),
                     duration: Duration(seconds: 2),
                   ),
                 );
@@ -268,7 +268,7 @@ class SettingsScreen extends ConsumerWidget {
           ),
           const ListTile(
             leading: Icon(Icons.info_outline),
-            title: Text('Kuroku Cross-Platform'),
+            title: Text('Panovault Cross-Platform'),
             subtitle: Text('Version ${AppUpdateService.currentVersion} (Reverse Engineered Flutter Edition)'),
           ),
         ],

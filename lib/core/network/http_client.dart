@@ -2,12 +2,12 @@ import 'package:dio/dio.dart';
 import 'package:cookie_jar/cookie_jar.dart';
 import 'package:dio_cookie_manager/dio_cookie_manager.dart';
 
-class KurokuHttpClient {
-  static final KurokuHttpClient instance = KurokuHttpClient._internal();
+class PanovaultHttpClient {
+  static final PanovaultHttpClient instance = PanovaultHttpClient._internal();
   late final Dio dio;
   late final CookieJar cookieJar;
 
-  KurokuHttpClient._internal() {
+  PanovaultHttpClient._internal() {
     cookieJar = CookieJar();
     dio = Dio(
       BaseOptions(
@@ -56,3 +56,6 @@ class KurokuHttpClient {
     );
   }
 }
+
+// Backward compatibility alias
+typedef KurokuHttpClient = PanovaultHttpClient;

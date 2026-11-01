@@ -31,7 +31,7 @@ class AppUpdateService {
   AppUpdateService._internal();
 
   static const String currentVersion = '1.4.4';
-  static const MethodChannel _channel = MethodChannel('com.rafylabs.kuroku/updater');
+  static const MethodChannel _channel = MethodChannel('com.rafylabs.panovault/updater');
 
   /// Compare two semver strings: returns true if [remote] is strictly greater than [current]
   bool isVersionNewer(String remote, String current) {
@@ -74,9 +74,9 @@ class AppUpdateService {
 
   Future<AppReleaseInfo?> checkUpdate() async {
     try {
-      final res = await KurokuHttpClient.instance.get<Map<String, dynamic>>(
-        'https://api.github.com/repos/rafylabs/kuroku/releases/latest',
-        headers: {'User-Agent': 'Kuroku-Updater'},
+      final res = await PanovaultHttpClient.instance.get<Map<String, dynamic>>(
+        'https://api.github.com/repos/rafylabs/panovault/releases/latest',
+        headers: {'User-Agent': 'Panovault-Updater'},
       );
 
       final data = res.data;
@@ -111,7 +111,7 @@ class AppUpdateService {
       return AppReleaseInfo(
         tagName: tagName,
         version: rawVersion,
-        name: data['name'] as String? ?? 'New Kuroku Version',
+        name: data['name'] as String? ?? 'New Panovault Version',
         body: data['body'] as String? ?? '',
         apkUrl: apkUrl,
         ipaUrl: ipaUrl,
@@ -132,13 +132,13 @@ class AppUpdateService {
     }
 
     final cacheDir = await getTemporaryDirectory();
-    final apkFile = File('${cacheDir.path}/Kuroku-v${release.version}.apk');
+    final apkFile = File('${cacheDir.path}/Panovault-v${release.version}.apk');
 
     if (await apkFile.exists()) {
       await apkFile.delete();
     }
 
-    await KurokuHttpClient.instance.dio.download(
+    await PanovaultHttpClient.instance.dio.download(
       release.apkUrl,
       apkFile.path,
       onReceiveProgress: (received, total) {

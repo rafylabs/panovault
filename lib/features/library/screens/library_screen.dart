@@ -251,7 +251,7 @@ class LibraryScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 8),
                   const Text(
-                    'Tambahkan manga ke Favorit. Ketika chapter baru dirilis, Kuroku akan otomatis mengirim notifikasi seperti Kotatsu.',
+                    'Tambahkan komik/strip ke Favorit. Ketika chapter baru dirilis, Panovault akan otomatis mengirim notifikasi.',
                     textAlign: TextAlign.center,
                     style: TextStyle(color: Colors.grey, fontSize: 13),
                   ),

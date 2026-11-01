@@ -186,7 +186,7 @@ class ShinigamiParser extends MangaParser {
     }
 
     try {
-      final res = await KurokuHttpClient.instance.get<Map<String, dynamic>>(
+      final res = await PanovaultHttpClient.instance.get<Map<String, dynamic>>(
         url,
         headers: headers,
       );
@@ -243,7 +243,7 @@ class ShinigamiParser extends MangaParser {
   Future<Manga> getDetails(Manga manga) async {
     final mId = manga.url;
     try {
-      final res = await KurokuHttpClient.instance.get<Map<String, dynamic>>(
+      final res = await PanovaultHttpClient.instance.get<Map<String, dynamic>>(
         '$_apiBase/manga/detail/$mId',
         headers: headers,
       );
@@ -324,7 +324,7 @@ class ShinigamiParser extends MangaParser {
   Future<List<MangaChapter>> getChapters(Manga manga) async {
     final mId = manga.url;
     try {
-      final res = await KurokuHttpClient.instance.get<Map<String, dynamic>>(
+      final res = await PanovaultHttpClient.instance.get<Map<String, dynamic>>(
         '$_apiBase/chapter/$mId/list?page=1&page_size=9999&sort_by=chapter_number&sort_order=desc',
         headers: headers,
       );
@@ -366,7 +366,7 @@ class ShinigamiParser extends MangaParser {
   Future<List<MangaPage>> getPages(MangaChapter chapter) async {
     final chId = chapter.url;
     try {
-      final res = await KurokuHttpClient.instance.get<Map<String, dynamic>>(
+      final res = await PanovaultHttpClient.instance.get<Map<String, dynamic>>(
         '$_apiBase/chapter/detail/$chId',
         headers: headers,
       );

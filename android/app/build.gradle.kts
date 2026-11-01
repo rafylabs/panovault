@@ -5,7 +5,7 @@ plugins {
 }
 
 android {
-    namespace = "com.rafylabs.kuroku"
+    namespace = "com.rafylabs.panovault"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -17,7 +17,7 @@ android {
 
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.rafylabs.kuroku"
+        applicationId = "com.rafylabs.panovault"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
@@ -32,7 +32,7 @@ android {
 
     signingConfigs {
         create("release") {
-            val keystoreFile = file("kuroku.keystore")
+            val keystoreFile = if (file("panovault.keystore").exists()) file("panovault.keystore") else file("kuroku.keystore")
             if (keystoreFile.exists()) {
                 storeFile = keystoreFile
                 storePassword = "kuroku123"

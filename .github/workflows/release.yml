@@ -33,16 +33,16 @@ jobs:
       - name: Package into Sideloadable IPA
         run: |
           mkdir -p build/release-assets/Payload
-          cp -r build/ios/iphoneos/Runner.app build/release-assets/Payload/Kuroku.app
+          cp -r build/ios/iphoneos/Runner.app build/release-assets/Payload/Panovault.app
           cd build/release-assets
-          zip -r -q Kuroku.ipa Payload
+          zip -r -q Panovault.ipa Payload
           rm -rf Payload
 
-      - name: Upload iOS IPA Artifact
+      - name: Upload iOS Asset
         uses: actions/upload-artifact@v4
         with:
-          name: Kuroku-iOS
-          path: build/release-assets/Kuroku.ipa
+          name: Panovault-iOS
+          path: build/release-assets/Panovault.ipa
           retention-days: 7
 
   build-android:
@@ -74,13 +74,13 @@ jobs:
       - name: Prepare APK Asset
         run: |
           mkdir -p build/release-assets
-          cp build/app/outputs/flutter-apk/app-release.apk build/release-assets/Kuroku.apk
+          cp build/app/outputs/flutter-apk/app-release.apk build/release-assets/Panovault.apk
 
       - name: Upload Android APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Kuroku-Android
-          path: build/release-assets/Kuroku.apk
+          name: Panovault-Android
+          path: build/release-assets/Panovault.apk
           retention-days: 7
 
   publish-release:
@@ -95,13 +95,13 @@ jobs:
       - name: Download iOS Artifact
         uses: actions/download-artifact@v4
         with:
-          name: Kuroku-iOS
+          name: Panovault-iOS
           path: release-files
 
       - name: Download Android Artifact
         uses: actions/download-artifact@v4
         with:
-          name: Kuroku-Android
+          name: Panovault-Android
           path: release-files
 
       - name: Extract Tag and Release Notes
@@ -137,8 +137,8 @@ jobs:
           body = notes + '\n\n---\n### 📱 Direct Downloads\n'
           body += '| Platform | File | Direct Download |\n'
           body += '|---|---|---|\n'
-          body += f'| **Android** | \`Kuroku.apk\` | [Download Kuroku.apk](https://github.com/${{ github.repository }}/releases/download/{tag}/Kuroku.apk) |\n'
-          body += f'| **iOS** | \`Kuroku.ipa\` | [Download Kuroku.ipa](https://github.com/${{ github.repository }}/releases/download/{tag}/Kuroku.ipa) |\n'
+          body += f'| **Android** | \`Panovault.apk\` | [Download Panovault.apk](https://github.com/${{ github.repository }}/releases/download/{tag}/Panovault.apk) |\n'
+          body += f'| **iOS** | \`Panovault.ipa\` | [Download Panovault.ipa](https://github.com/${{ github.repository }}/releases/download/{tag}/Panovault.ipa) |\n'
 
           with open('release_notes.txt', 'w') as out:
               out.write(body)
@@ -148,11 +148,11 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.tag_info.outputs.tag }}
-          name: "Kuroku ${{ steps.tag_info.outputs.tag }} — Cross-Platform Release"
+          name: "Panovault ${{ steps.tag_info.outputs.tag }} — Cross-Platform Release"
           draft: false
           prerelease: false
           make_latest: true
           files: |
-            release-files/Kuroku.ipa
-            release-files/Kuroku.apk
+            release-files/Panovault.ipa
+            release-files/Panovault.apk
           body_path: release_notes.txt

@@ -8,7 +8,8 @@ import 'parsers/weebcentral_parser.dart';
 class ParserRegistry {
   static final ParserRegistry instance = ParserRegistry._internal();
 
-  static const String _kActiveParserKey = 'kuroku_active_parser_id';
+  static const String _kActiveParserKey = 'panovault_active_parser_id';
+  static const String _kLegacyActiveParserKey = 'kuroku_active_parser_id';
 
   final Map<String, MangaParser> _parsers = {};
   final MangaPillParser _mangapill = MangaPillParser();
@@ -76,7 +77,7 @@ class ParserRegistry {
       }
 
       // Restore active parser choice (default to mangapill)
-      final savedActiveId = prefs.getString(_kActiveParserKey);
+      final savedActiveId = prefs.getString(_kActiveParserKey) ?? prefs.getString(_kLegacyActiveParserKey);
       if (savedActiveId != null && _parsers.containsKey(savedActiveId)) {
         _activeParserId = savedActiveId;
       } else {
