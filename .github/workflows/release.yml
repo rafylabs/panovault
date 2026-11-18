@@ -2,7 +2,9 @@ name: Build & Release (iOS & Android)
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main
+      - chore/flutter-3.50-migration
     tags: [ 'v*' ]
   workflow_dispatch:
 
