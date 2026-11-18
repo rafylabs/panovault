@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:kuroku/core/parser/dynamic_manga_parser.dart';
-import 'package:kuroku/core/parser/parser_importer.dart';
+import 'package:panovault/core/parser/dynamic_manga_parser.dart';
+import 'package:panovault/core/parser/parser_importer.dart';
 
 void main() {
   group('ParserImporter JSON Spec Tests', () {

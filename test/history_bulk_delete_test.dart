@@ -1,18 +1,18 @@
 // ignore_for_file: avoid_print
 import 'dart:io';
 import 'dart:ui' as ui;
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:kuroku/core/database/models/chapter.dart';
-import 'package:kuroku/core/database/models/history_entry.dart';
-import 'package:kuroku/core/database/models/manga.dart';
-import 'package:kuroku/core/theme/app_theme.dart';
-import 'package:kuroku/features/history/providers/history_provider.dart';
-import 'package:kuroku/features/history/screens/history_screen.dart';
+import 'package:panovault/core/database/models/chapter.dart';
+import 'package:panovault/core/database/models/history_entry.dart';
+import 'package:panovault/core/database/models/manga.dart';
+import 'package:panovault/core/theme/app_theme.dart';
+import 'package:panovault/features/history/providers/history_provider.dart';
+import 'package:panovault/features/history/screens/history_screen.dart';
 
 Future<void> _loadSystemFonts() async {
   try {
@@ -242,7 +242,7 @@ void main() {
       final boundary = boundaryKey.currentContext!.findRenderObject() as RenderRepaintBoundary;
       final image = await boundary.toImage(pixelRatio: 2.0);
       final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
-      const path = '/opt/data/profiles/dev-one/cache/scratch/history_bulk_selection_preview.png';
+      const path = '/opt/data/profiles/dev-three/cache/scratch/history_bulk_selection_preview.png';
       File(path).writeAsBytesSync(byteData!.buffer.asUint8List());
       print('Saved selection preview: $path');
     });
@@ -285,7 +285,7 @@ void main() {
       final boundary = boundaryKey.currentContext!.findRenderObject() as RenderRepaintBoundary;
       final image = await boundary.toImage(pixelRatio: 2.0);
       final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
-      const path = '/opt/data/profiles/dev-one/cache/scratch/history_bulk_dialog_preview.png';
+      const path = '/opt/data/profiles/dev-three/cache/scratch/history_bulk_dialog_preview.png';
       File(path).writeAsBytesSync(byteData!.buffer.asUint8List());
       print('Saved dialog preview: $path');
     });

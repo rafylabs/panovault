@@ -1,8 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:kuroku/core/database/models/chapter.dart';
-import 'package:kuroku/core/database/models/history_entry.dart';
-import 'package:kuroku/core/database/models/manga.dart';
-import 'package:kuroku/features/reader/providers/reader_provider.dart';
+import 'package:panovault/core/database/models/chapter.dart';
+import 'package:panovault/core/database/models/history_entry.dart';
+import 'package:panovault/core/database/models/manga.dart';
+import 'package:panovault/features/reader/providers/reader_provider.dart';
 
 void main() {
   group('E2E Logic Test: Stopping in middle of chapter and resume flow', () {

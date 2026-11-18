@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:extended_image/extended_image.dart';
 import '../../../core/database/models/manga.dart';
@@ -491,7 +491,13 @@ class _CatalogScreenState extends ConsumerState<CatalogScreen> {
               )
             : Row(
                 children: [
-                  const Text('Panovault', style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 0.5)),
+                  const Flexible(
+                    child: Text(
+                      'Panovault',
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 0.5),
+                    ),
+                  ),
                   const SizedBox(width: 8),
                   GestureDetector(
                     onTap: _showSourcePicker,

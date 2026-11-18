@@ -1,16 +1,16 @@
 // ignore_for_file: avoid_print
 import 'dart:io';
 import 'dart:ui' as ui;
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:kuroku/core/database/models/manga.dart';
-import 'package:kuroku/core/theme/app_theme.dart';
-import 'package:kuroku/features/library/providers/library_provider.dart';
-import 'package:kuroku/features/library/screens/library_screen.dart';
+import 'package:panovault/core/database/models/manga.dart';
+import 'package:panovault/core/theme/app_theme.dart';
+import 'package:panovault/features/library/providers/library_provider.dart';
+import 'package:panovault/features/library/screens/library_screen.dart';
 
 Future<void> _loadSystemFonts() async {
   try {
@@ -137,7 +137,7 @@ void main() {
       final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
       final bytes = byteData!.buffer.asUint8List();
 
-      final file = File('/opt/data/profiles/dev-one/cache/scratch/library_screen_render.png');
+      final file = File('/opt/data/profiles/dev-three/cache/scratch/library_screen_render.png');
       file.writeAsBytesSync(bytes);
       print('Saved Library preview: ${file.path}');
     });

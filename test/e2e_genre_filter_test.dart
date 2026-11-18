@@ -1,17 +1,17 @@
 // ignore_for_file: avoid_print
 import 'dart:io';
 import 'dart:ui' as ui;
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:kuroku/core/database/models/manga.dart';
-import 'package:kuroku/core/parser/parser_registry.dart';
-import 'package:kuroku/core/theme/app_theme.dart';
-import 'package:kuroku/features/catalog/providers/catalog_provider.dart';
-import 'package:kuroku/features/catalog/screens/catalog_screen.dart';
+import 'package:panovault/core/database/models/manga.dart';
+import 'package:panovault/core/parser/parser_registry.dart';
+import 'package:panovault/core/theme/app_theme.dart';
+import 'package:panovault/features/catalog/providers/catalog_provider.dart';
+import 'package:panovault/features/catalog/screens/catalog_screen.dart';
 
 Future<void> _loadSystemFonts() async {
   try {
@@ -194,7 +194,7 @@ void main() {
         final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
         final pngBytes = byteData!.buffer.asUint8List();
 
-        final file = File('/opt/data/profiles/dev-one/cache/scratch/catalog_multi_genre_filter.png');
+        final file = File('/opt/data/profiles/dev-three/cache/scratch/catalog_multi_genre_filter.png');
         file.writeAsBytesSync(pngBytes);
         print('Saved Catalog preview: ${file.path}');
         expect(file.existsSync(), isTrue);
@@ -361,7 +361,7 @@ void main() {
         final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
         final pngBytes = byteData!.buffer.asUint8List();
 
-        final file = File('/opt/data/profiles/dev-one/cache/scratch/weebcentral_filter_sheet_preview.png');
+        final file = File('/opt/data/profiles/dev-three/cache/scratch/weebcentral_filter_sheet_preview.png');
         file.writeAsBytesSync(pngBytes);
         print('Saved Filter Sheet preview: ${file.path}');
 
@@ -498,7 +498,7 @@ void main() {
         final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
         final pngBytes = byteData!.buffer.asUint8List();
 
-        final file = File('/opt/data/profiles/dev-one/cache/scratch/manga_detail_genres_preview.png');
+        final file = File('/opt/data/profiles/dev-three/cache/scratch/manga_detail_genres_preview.png');
         file.writeAsBytesSync(pngBytes);
         print('Saved Manga Detail Genres preview: ${file.path}');
 

@@ -1,11 +1,11 @@
 // ignore_for_file: avoid_print
 import 'dart:io';
 import 'dart:ui' as ui;
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:kuroku/core/database/models/chapter.dart';
+import 'package:panovault/core/database/models/chapter.dart';
 
 Future<void> _loadSystemFonts() async {
   try {
@@ -240,9 +240,9 @@ void main() {
       final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
       final bytes = byteData!.buffer.asUint8List();
 
-      final outDir = Directory('/opt/data/profiles/dev-one/cache/scratch');
+      final outDir = Directory('/opt/data/profiles/dev-three/cache/scratch');
       if (!outDir.existsSync()) outDir.createSync(recursive: true);
-      final file = File('/opt/data/profiles/dev-one/cache/scratch/chapter_list_preview.png');
+      final file = File('/opt/data/profiles/dev-three/cache/scratch/chapter_list_preview.png');
       file.writeAsBytesSync(bytes);
       print('SCREENSHOT_SAVED: ${file.path} (${file.lengthSync()} bytes)');
     });

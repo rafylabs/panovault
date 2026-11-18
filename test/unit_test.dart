@@ -1,16 +1,16 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:html/parser.dart' as html_parser;
-import 'package:kuroku/core/database/models/manga.dart';
-import 'package:kuroku/core/database/models/chapter.dart';
-import 'package:kuroku/core/database/models/manga_page.dart';
-import 'package:kuroku/core/database/models/chapter_update.dart';
-import 'package:kuroku/core/parser/parser_registry.dart';
-import 'package:kuroku/core/download/download_manager.dart';
-import 'package:kuroku/core/services/library_update_service.dart';
-import 'package:kuroku/core/services/app_update_service.dart';
-import 'package:kuroku/features/history/providers/history_provider.dart';
-import 'package:kuroku/core/database/models/history_entry.dart';
-import 'package:kuroku/core/theme/app_theme.dart';
+import 'package:panovault/core/database/models/manga.dart';
+import 'package:panovault/core/database/models/chapter.dart';
+import 'package:panovault/core/database/models/manga_page.dart';
+import 'package:panovault/core/database/models/chapter_update.dart';
+import 'package:panovault/core/parser/parser_registry.dart';
+import 'package:panovault/core/download/download_manager.dart';
+import 'package:panovault/core/services/library_update_service.dart';
+import 'package:panovault/core/services/app_update_service.dart';
+import 'package:panovault/features/history/providers/history_provider.dart';
+import 'package:panovault/core/database/models/history_entry.dart';
+import 'package:panovault/core/theme/app_theme.dart';
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 
 void main() {

@@ -1,8 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:html/parser.dart' as html_parser;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:kuroku/core/parser/parser_registry.dart';
-import 'package:kuroku/core/parser/parser_importer.dart';
+import 'package:panovault/core/parser/parser_registry.dart';
+import 'package:panovault/core/parser/parser_importer.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -38,7 +38,7 @@ void main() {
       // 2. User switches active parser to weebcentral
       await ParserRegistry.instance.setActiveParserId('weebcentral');
       expect(ParserRegistry.instance.activeParser.id, 'weebcentral');
-      expect(prefs.getString('kuroku_active_parser_id'), 'weebcentral');
+      expect(prefs.getString('panovault_active_parser_id'), 'weebcentral');
 
       // 3. User updates custom domain
       await ParserRegistry.instance.updateSourceDomain('mangapill', 'mirror.mangapill.com');

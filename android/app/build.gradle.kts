@@ -33,23 +33,19 @@ android {
     signingConfigs {
         create("release") {
             val keystoreFile = if (file("panovault.keystore").exists()) file("panovault.keystore") else file("kuroku.keystore")
-            if (keystoreFile.exists()) {
-                storeFile = keystoreFile
+            check(keystoreFile.exists()) {
+                "Release signing keystore not found; refusing to build an unsigned or debug-signed release."
+            }
+            storeFile = keystoreFile
                 storePassword = "kuroku123"
                 keyAlias = "kuroku"
                 keyPassword = "kuroku123"
-            }
         }
     }
 
     buildTypes {
         release {
-            val releaseSigning = signingConfigs.getByName("release")
-            signingConfig = if (releaseSigning.storeFile != null && releaseSigning.storeFile!!.exists()) {
-                releaseSigning
-            } else {
-                signingConfigs.getByName("debug")
-            }
+            signingConfig = signingConfigs.getByName("release")
         }
     }
 }

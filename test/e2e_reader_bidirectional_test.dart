@@ -1,19 +1,19 @@
 // ignore_for_file: avoid_print
 import 'dart:io';
 import 'dart:ui' as ui;
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:kuroku/core/database/models/manga.dart';
-import 'package:kuroku/core/database/models/chapter.dart';
-import 'package:kuroku/core/database/models/manga_page.dart';
-import 'package:kuroku/core/parser/manga_parser.dart';
-import 'package:kuroku/core/parser/parser_registry.dart';
-import 'package:kuroku/core/theme/app_theme.dart';
-import 'package:kuroku/features/reader/providers/reader_provider.dart';
-import 'package:kuroku/features/reader/screens/manga_reader_screen.dart';
+import 'package:panovault/core/database/models/manga.dart';
+import 'package:panovault/core/database/models/chapter.dart';
+import 'package:panovault/core/database/models/manga_page.dart';
+import 'package:panovault/core/parser/manga_parser.dart';
+import 'package:panovault/core/parser/parser_registry.dart';
+import 'package:panovault/core/theme/app_theme.dart';
+import 'package:panovault/features/reader/providers/reader_provider.dart';
+import 'package:panovault/features/reader/screens/manga_reader_screen.dart';
 
 final kTransparentImage = Uint8List.fromList(<int>[
   0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D, 0x49,
@@ -92,7 +92,7 @@ void main() {
     TestWidgetsFlutterBinding.ensureInitialized();
     await _loadSystemFonts();
 
-    final dummyFile = File('/opt/data/profiles/dev-one/cache/scratch/dummy_page.png');
+    final dummyFile = File('/opt/data/profiles/dev-three/cache/scratch/dummy_page.png');
     await dummyFile.writeAsBytes(kTransparentImage);
     dummyImagePath = dummyFile.path;
 
@@ -307,7 +307,7 @@ void main() {
         final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
         final bytes = byteData!.buffer.asUint8List();
 
-        final outputFile = File('/opt/data/profiles/dev-one/cache/scratch/reader_hud_controls_preview.png');
+        final outputFile = File('/opt/data/profiles/dev-three/cache/scratch/reader_hud_controls_preview.png');
         await outputFile.writeAsBytes(bytes);
         print('Saved Reader HUD preview: ${outputFile.path}');
       });
@@ -365,7 +365,7 @@ void main() {
         final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
         final bytes = byteData!.buffer.asUint8List();
 
-        final outputFile = File('/opt/data/profiles/dev-one/cache/scratch/reader_chapter_transition_preview.png');
+        final outputFile = File('/opt/data/profiles/dev-three/cache/scratch/reader_chapter_transition_preview.png');
         await outputFile.writeAsBytes(bytes);
         print('Saved Chapter Transition preview: ${outputFile.path}');
       });
@@ -415,7 +415,7 @@ void main() {
         final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
         final bytes = byteData!.buffer.asUint8List();
 
-        final outputFile = File('/opt/data/profiles/dev-one/cache/scratch/reader_boundary_preview.png');
+        final outputFile = File('/opt/data/profiles/dev-three/cache/scratch/reader_boundary_preview.png');
         await outputFile.writeAsBytes(bytes);
         print('Saved Reader Boundary preview: ${outputFile.path}');
       });

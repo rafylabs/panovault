@@ -1,4 +1,5 @@
-import 'package:flutter/material.dart';
+// ignore_for_file: deprecated_member_use
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/theme/app_theme.dart';
@@ -48,6 +49,8 @@ class PanovaultApp extends StatelessWidget {
         theme: AppTheme.lightTheme,
         darkTheme: AppTheme.darkTheme,
         themeMode: ThemeMode.dark, // Default to dark cyber theme
+        builder: (context, child) =>
+            MaterialUiCompatibilityBridge(child: child!),
         home: const MainNavigationScreen(),
       ),
     );
