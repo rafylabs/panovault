@@ -323,14 +323,17 @@ class ShinigamiParser extends MangaParser {
   Future<List<MangaChapter>> getChapters(Manga manga) async {
     final mId = _mangaId(manga);
     final chapters = <MangaChapter>[];
-    var offset = 0;
+    final seenChapterIds = <String>{};
+    final seenCursors = <String>{};
+    String? cursor;
     var guard = 0;
 
     try {
       while (guard++ < 40) {
         final url = '$_apiBase/chapter/$mId/list'
-            '?offset=$offset&limit=$_chapterPageSize'
-            '&sort_by=chapter_number&sort_order=desc';
+            '?limit=$_chapterPageSize'
+            '&sort_by=chapter_number&sort_order=desc'
+            '${cursor == null ? '' : '&cursor=${Uri.encodeQueryComponent(cursor)}'}';
 
         final res =
             await PanovaultHttpClient.instance.get<Map<String, dynamic>>(
@@ -344,7 +347,7 @@ class ShinigamiParser extends MangaParser {
         for (final item in dataList) {
           if (item is! Map<String, dynamic>) continue;
           final chId = (item['chapter_id'] as String?)?.trim() ?? '';
-          if (chId.isEmpty) continue;
+          if (chId.isEmpty || !seenChapterIds.add(chId)) continue;
 
           final chNum = (item['chapter_number'] as num?)?.toDouble() ?? 0.0;
           final rawTitle = (item['chapter_title'] as String?)?.trim() ?? '';
@@ -368,7 +371,11 @@ class ShinigamiParser extends MangaParser {
         final meta = res.data?['meta'] as Map<String, dynamic>?;
         final hasNext = meta?['has_next'] == true;
         if (!hasNext) break;
-        offset += _chapterPageSize;
+        final nextCursor = (meta?['next_cursor'] as String?)?.trim();
+        if (nextCursor == null || nextCursor.isEmpty || !seenCursors.add(nextCursor)) {
+          break;
+        }
+        cursor = nextCursor;
       }
 
       chapters.sort((a, b) => b.number.compareTo(a.number));

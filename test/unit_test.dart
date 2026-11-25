@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:html/parser.dart' as html_parser;
 import 'package:panovault/core/database/models/manga.dart';
@@ -198,6 +200,13 @@ void main() {
       expect(service, isNotNull);
       expect(service.isCheckingUpdates.value, isFalse);
       expect(service.unseenUpdateCount.value, 0);
+    });
+
+    test('AppUpdateService version stays synchronized with pubspec.yaml', () {
+      final pubspec = File('pubspec.yaml').readAsStringSync();
+      final version = RegExp(r'^version:\s*([^+\s]+)', multiLine: true).firstMatch(pubspec)?.group(1);
+      expect(version, isNotNull);
+      expect(AppUpdateService.currentVersion, version);
     });
 
     test('AppUpdateService semver comparison detects newer versions', () {

@@ -2,6 +2,12 @@
 
 All notable changes to Panovault will be documented in this file.
 
+## [v1.4.6] - 2026-11-25
+### 🐛 Perbaikan Chapter, Versi, dan Ikon:
+- 📚 **Pagination Chapter Shinigami**: Gunakan `next_cursor` dari API; API saat ini mengabaikan `offset` sehingga sebelumnya halaman pertama terus terulang. Deduplicasi ID chapter mencegah duplikat bila API mengembalikan irisan tumpang tindih.
+- 🔢 **Versi Aplikasi & Popup Update**: Sinkronkan versi updater dengan versi rilis `1.4.6`, sehingga Settings menampilkan versi terpasang dan popup update tidak terus menganggap `1.4.5` sebagai versi baru.
+- 🎨 **Ikon Panovault Baru**: Ganti launcher icon Android dan iOS dengan emblem buku terbuka bernuansa navy/cyan, tanpa monogram K; sertakan generator aset untuk menghasilkan ulang semua ukuran.
+
 ## [v1.4.5] - 2026-11-25
 ### 🚀 Migrasi Flutter 3.50 & Perbaikan Pipeline Rilis:
 - ⚙️ **Migrasi Toolchain Flutter 3.50**: Proyek dimigrasikan ke Flutter 3.50.1 / Dart 3.14 dengan pemisahan paket `material_ui`, bump AGP Android ke 9.1.1, serta penyesuaian seluruh impor Material di 16 berkas.
