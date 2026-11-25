@@ -6,6 +6,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:panovault/core/database/models/chapter.dart';
+import 'preview_output.dart';
 
 Future<void> _loadSystemFonts() async {
   try {
@@ -240,9 +241,9 @@ void main() {
       final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
       final bytes = byteData!.buffer.asUint8List();
 
-      final outDir = Directory('/opt/data/profiles/dev-three/cache/scratch');
+      final outDir = previewDir();
       if (!outDir.existsSync()) outDir.createSync(recursive: true);
-      final file = File('/opt/data/profiles/dev-three/cache/scratch/chapter_list_preview.png');
+      final file = previewFile('chapter_list_preview.png');
       file.writeAsBytesSync(bytes);
       print('SCREENSHOT_SAVED: ${file.path} (${file.lengthSync()} bytes)');
     });

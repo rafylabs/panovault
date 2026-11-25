@@ -13,6 +13,7 @@ import 'package:panovault/core/database/models/manga.dart';
 import 'package:panovault/core/theme/app_theme.dart';
 import 'package:panovault/features/history/providers/history_provider.dart';
 import 'package:panovault/features/history/screens/history_screen.dart';
+import 'preview_output.dart';
 
 Future<void> _loadSystemFonts() async {
   try {
@@ -242,7 +243,7 @@ void main() {
       final boundary = boundaryKey.currentContext!.findRenderObject() as RenderRepaintBoundary;
       final image = await boundary.toImage(pixelRatio: 2.0);
       final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
-      const path = '/opt/data/profiles/dev-three/cache/scratch/history_bulk_selection_preview.png';
+      final path = previewFile('history_bulk_selection_preview.png').path;
       File(path).writeAsBytesSync(byteData!.buffer.asUint8List());
       print('Saved selection preview: $path');
     });
@@ -285,7 +286,7 @@ void main() {
       final boundary = boundaryKey.currentContext!.findRenderObject() as RenderRepaintBoundary;
       final image = await boundary.toImage(pixelRatio: 2.0);
       final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
-      const path = '/opt/data/profiles/dev-three/cache/scratch/history_bulk_dialog_preview.png';
+      final path = previewFile('history_bulk_dialog_preview.png').path;
       File(path).writeAsBytesSync(byteData!.buffer.asUint8List());
       print('Saved dialog preview: $path');
     });

@@ -5,10 +5,30 @@ import '../../network/http_client.dart';
 import '../manga_parser.dart';
 
 class ShinigamiParser extends MangaParser {
+  // ignore: prefer_initializing_formals
+  ShinigamiParser({String? customDomain}) : _customDomain = customDomain;
+
   String? _customDomain;
 
+  /// Accepts raw manga uuid, prefixed DB id (`shinigami_<uuid>`), or full URL.
+  String _mangaId(Manga manga) {
+    final raw = manga.url.trim();
+    if (raw.contains('/manga/')) {
+      final segs = Uri.parse(raw).pathSegments;
+      final i = segs.indexOf('manga');
+      if (i >= 0 && segs.length > i + 1) return segs[i + 1];
+    }
+    final prefix = '${id}_';
+    if (raw.startsWith(prefix)) return raw.substring(prefix.length);
+    return raw;
+  }
+
   void setCustomDomain(String newDomain) {
-    _customDomain = newDomain.replaceAll('https://', '').replaceAll('http://', '').replaceAll('/', '').trim();
+    _customDomain = newDomain
+        .replaceAll('https://', '')
+        .replaceAll('http://', '')
+        .replaceAll('/', '')
+        .trim();
   }
 
   @override
@@ -18,89 +38,92 @@ class ShinigamiParser extends MangaParser {
   String get name => 'Shinigami (ID)';
 
   @override
-  String get domain => _customDomain ?? 'id.shinigami.asia';
+  String get domain => _customDomain ?? 's1.shinigami.mx';
 
   @override
   String get locale => 'id';
 
-  final String _apiBase = 'https://api.shngm.io/v1';
-  final String _cdnBase = 'https://storage.shngm.id';
+  static const String _apiBase = 'https://api.shinigami.io/v1';
+  static const String _cdnBase = 'https://cdn.shinigami.gg';
+  static const int _listPageSize = 24;
+  static const int _chapterPageSize = 100;
 
   @override
   Map<String, String> get headers => {
-    'Referer': 'https://$domain/',
-    'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Mobile/15E148 Safari/604.1',
-  };
+        'Referer': 'https://$domain/',
+        'Origin': 'https://$domain',
+        'User-Agent':
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+        'Accept': 'application/json, text/plain, */*',
+      };
 
   @override
   List<String> get availableCategories => const [
-    'All',
-    'Manhwa',
-    'Manga',
-    'Manhua',
-    'Project',
-  ];
+        'All',
+        'Manhwa',
+        'Manga',
+        'Manhua',
+        'Project',
+        'Mirror',
+      ];
 
   @override
   List<String> get availableGenres => const [
-    'All',
-    'Action',
-    'Adventure',
-    'Comedy',
-    'Cooking',
-    'Crime',
-    'Demon',
-    'Drama',
-    'Ecchi',
-    'Fantasy',
-    'Fight',
-    'Game',
-    'Gender Bender',
-    'Harem',
-    'Historical',
-    'Horror',
-    'Isekai',
-    'Josei',
-    'Magic',
-    'Martial Arts',
-    'Mature',
-    'Mecha',
-    'Medical',
-    'Murim',
-    'Mystery',
-    'Psychological',
-    'Regression',
-    'Reincarnation',
-    'Revenge',
-    'Romance',
-    'School Life',
-    'Sci-fi',
-    'Seinen',
-    'Shoujo',
-    'Shounen',
-    'Slice of Life',
-    'Sports',
-    'Supernatural',
-    'Thriller',
-    'Tragedy',
-    'Wuxia',
-  ];
+        'All',
+        'Action',
+        'Adventure',
+        'Comedy',
+        'Cooking',
+        'Crime',
+        'Demon',
+        'Drama',
+        'Ecchi',
+        'Fantasy',
+        'Fight',
+        'Game',
+        'Gender Bender',
+        'Harem',
+        'Historical',
+        'Horror',
+        'Isekai',
+        'Josei',
+        'Magic',
+        'Martial Arts',
+        'Mature',
+        'Mecha',
+        'Medical',
+        'Murim',
+        'Mystery',
+        'Psychological',
+        'Regression',
+        'Reincarnation',
+        'Revenge',
+        'Romance',
+        'School Life',
+        'Sci-fi',
+        'Seinen',
+        'Shoujo',
+        'Shounen',
+        'Slice of Life',
+        'Sports',
+        'Supernatural',
+        'Thriller',
+        'Tragedy',
+        'Wuxia',
+      ];
 
   static const Map<String, String> _genreSlugMap = {
     'action': 'action',
-    'adaptation': 'adaptation',
     'adult': 'adult',
     'adventure': 'adventure',
     'comedy': 'comedy',
     'cooking': 'cooking',
     'crime': 'crime',
     'demon': 'demon',
-    'demons': 'demons',
     'drama': 'drama',
     'ecchi': 'ecchi',
     'fantasy': 'fantasy',
     'fight': 'fight',
-    'fighting': 'fighting-genre',
     'game': 'game',
     'gender bender': 'gender-bender',
     'harem': 'harem',
@@ -108,8 +131,6 @@ class ShinigamiParser extends MangaParser {
     'horror': 'horror',
     'isekai': 'isekai',
     'josei': 'josei-genre',
-    'latest': 'latest',
-    'love': 'love',
     'magic': 'magic',
     'martial arts': 'martial-arts',
     'mature': 'mature',
@@ -117,7 +138,6 @@ class ShinigamiParser extends MangaParser {
     'medical': 'medical',
     'murim': 'murim',
     'mystery': 'mystery',
-    'philosophical': 'philosophical',
     'psychological': 'psychological',
     'regression': 'regression',
     'reincarnation': 'reincarnation-genre',
@@ -132,16 +152,50 @@ class ShinigamiParser extends MangaParser {
     'smut': 'smut',
     'sports': 'sports',
     'supernatural': 'supernatural',
-    'supranatural': 'supranatural',
     'thriller': 'thriller',
     'tragedy': 'tragedy',
-    'violence': 'violence',
     'wuxia': 'wuxia',
   };
 
   String _toGenreSlug(String genre) {
     final lower = genre.trim().toLowerCase();
     return _genreSlugMap[lower] ?? lower.replaceAll(' ', '-');
+  }
+
+  String _absolutize(String raw) {
+    final v = raw.trim();
+    if (v.isEmpty) return '';
+    if (v.startsWith('http://') || v.startsWith('https://')) return v;
+    return v.startsWith('/') ? '$_cdnBase$v' : '$_cdnBase/$v';
+  }
+
+  MangaStatus _parseStatus(dynamic raw) {
+    if (raw == 1 || raw == '1') return MangaStatus.ongoing;
+    if (raw == 2 || raw == '2') return MangaStatus.completed;
+    if (raw == 3 || raw == '3') return MangaStatus.cancelled;
+    return MangaStatus.unknown;
+  }
+
+  Manga _mangaFromJson(Map<String, dynamic> item) {
+    final mId = (item['manga_id'] as String?)?.trim() ?? '';
+    final title = (item['title'] as String?)?.trim() ?? '';
+
+    final portrait = (item['cover_portrait_url'] as String?) ?? '';
+    final cover = (item['cover_image_url'] as String?) ?? '';
+    final coverUrl = _absolutize(
+      portrait.trim().isNotEmpty ? portrait : cover,
+    );
+
+    return Manga(
+      id: '${id}_$mId',
+      title: title,
+      altTitle: item['alternative_title'] as String?,
+      url: mId,
+      coverUrl: coverUrl,
+      sourceId: id,
+      status: _parseStatus(item['status']),
+      description: item['description'] as String?,
+    );
   }
 
   @override
@@ -153,20 +207,29 @@ class ShinigamiParser extends MangaParser {
     List<String>? genres,
     String? category,
   }) async {
+    final safePage = page < 1 ? 1 : page;
+    final offset = (safePage - 1) * _listPageSize;
     final sort = order == SortOrder.popular ? 'popularity' : 'latest';
-    String url = '$_apiBase/manga/list?page=$page&page_size=24&sort=$sort&sort_order=desc';
+
+    final params = <String>[
+      'offset=$offset',
+      'limit=$_listPageSize',
+      'sort=$sort',
+      'sort_order=desc',
+    ];
 
     if (query != null && query.trim().isNotEmpty) {
-      final q = Uri.encodeComponent(query.trim());
-      url += '&q=$q';
+      params.add('q=${Uri.encodeQueryComponent(query.trim())}');
     }
 
-    if (category != null && category.trim().isNotEmpty && category.trim().toLowerCase() != 'all') {
+    if (category != null &&
+        category.trim().isNotEmpty &&
+        category.trim().toLowerCase() != 'all') {
       final cat = category.trim().toLowerCase();
       if (cat == 'project' || cat == 'mirror') {
-        url += '&type=$cat';
+        params.add('type=$cat');
       } else {
-        url += '&format=$cat';
+        params.add('format=$cat');
       }
     }
 
@@ -177,62 +240,29 @@ class ShinigamiParser extends MangaParser {
           activeSlugs.add(_toGenreSlug(g));
         }
       }
-    } else if (genre != null && genre.trim().isNotEmpty && genre.trim().toLowerCase() != 'all') {
+    } else if (genre != null &&
+        genre.trim().isNotEmpty &&
+        genre.trim().toLowerCase() != 'all') {
       activeSlugs.add(_toGenreSlug(genre));
     }
-
     for (final slug in activeSlugs) {
-      url += '&genre=${Uri.encodeComponent(slug)}';
+      params.add('genre=${Uri.encodeQueryComponent(slug)}');
     }
 
     try {
       final res = await PanovaultHttpClient.instance.get<Map<String, dynamic>>(
-        url,
+        '$_apiBase/manga/list?${params.join('&')}',
         headers: headers,
       );
 
-      final dataList = res.data?['data'] as List<dynamic>? ?? [];
+      final dataList = res.data?['data'] as List<dynamic>? ?? <dynamic>[];
       final list = <Manga>[];
-
       for (final item in dataList) {
         if (item is! Map<String, dynamic>) continue;
-
-        final mId = item['manga_id'] as String? ?? '';
-        final title = item['title'] as String? ?? '';
-        if (mId.isEmpty || title.isEmpty) continue;
-
-        String coverUrl = '';
-        final portrait = item['cover_portrait_url'] as String?;
-        final cover = item['cover_image_url'] as String?;
-        if (portrait != null && portrait.trim().isNotEmpty) {
-          coverUrl = portrait.trim();
-        } else if (cover != null && cover.trim().isNotEmpty) {
-          coverUrl = cover.trim();
-        }
-
-        if (coverUrl.isNotEmpty && !coverUrl.startsWith('http')) {
-          coverUrl = coverUrl.startsWith('/') ? '$_cdnBase$coverUrl' : '$_cdnBase/$coverUrl';
-        }
-
-        final statusVal = item['status'] as int? ?? 0;
-        final status = statusVal == 2
-            ? MangaStatus.completed
-            : statusVal == 1
-                ? MangaStatus.ongoing
-                : MangaStatus.unknown;
-
-        list.add(Manga(
-          id: '${id}_$mId',
-          title: title,
-          altTitle: item['alternative_title'] as String?,
-          url: mId, // Store raw manga_id in url field
-          coverUrl: coverUrl,
-          sourceId: id,
-          status: status,
-          description: item['description'] as String?,
-        ));
+        final manga = _mangaFromJson(item);
+        if (manga.url.isEmpty || manga.title.isEmpty) continue;
+        list.add(manga);
       }
-
       return list;
     } catch (_) {
       return [];
@@ -241,79 +271,48 @@ class ShinigamiParser extends MangaParser {
 
   @override
   Future<Manga> getDetails(Manga manga) async {
-    final mId = manga.url;
     try {
       final res = await PanovaultHttpClient.instance.get<Map<String, dynamic>>(
-        '$_apiBase/manga/detail/$mId',
+        '$_apiBase/manga/detail/${_mangaId(manga)}',
         headers: headers,
       );
 
       final data = res.data?['data'] as Map<String, dynamic>?;
       if (data == null) return manga;
 
-      final desc = data['description'] as String?;
-      final genres = <String>[];
       final tax = data['taxonomy'] as Map<String, dynamic>?;
-      final genreList = tax?['Genre'] as List<dynamic>?;
-      if (genreList != null) {
-        for (final g in genreList) {
-          if (g is Map<String, dynamic> && g['name'] != null) {
-            genres.add(g['name'] as String);
-          }
-        }
+      List<String> names(String key) {
+        final raw = tax?[key] as List<dynamic>?;
+        if (raw == null) return const [];
+        return raw
+            .whereType<Map<String, dynamic>>()
+            .map((e) => e['name'])
+            .whereType<String>()
+            .where((e) => e.trim().isNotEmpty)
+            .toList();
       }
 
-      final authors = <String>[];
-      final authorList = tax?['Author'] as List<dynamic>?;
-      if (authorList != null) {
-        for (final a in authorList) {
-          if (a is Map<String, dynamic> && a['name'] != null) {
-            authors.add(a['name'] as String);
-          }
-        }
-      }
+      final genres = names('Genre');
+      final authors = names('Author');
+      final artists = names('Artist');
 
-      final artists = <String>[];
-      final artistList = tax?['Artist'] as List<dynamic>?;
-      if (artistList != null) {
-        for (final a in artistList) {
-          if (a is Map<String, dynamic> && a['name'] != null) {
-            artists.add(a['name'] as String);
-          }
-        }
-      }
-
-      final altTitle = data['alternative_title'] as String?;
-      final rawStatus = data['status'];
-      MangaStatus status = manga.status;
-      if (rawStatus == 1 || rawStatus == '1' || rawStatus == 'Ongoing') {
-        status = MangaStatus.ongoing;
-      } else if (rawStatus == 2 || rawStatus == '2' || rawStatus == 'Completed') {
-        status = MangaStatus.completed;
-      }
-
-      String coverUrl = manga.coverUrl;
-      if (coverUrl.isEmpty) {
-        final portrait = data['cover_portrait_url'] as String?;
-        final cover = data['cover_image_url'] as String?;
-        if (portrait != null && portrait.trim().isNotEmpty) {
-          coverUrl = portrait.trim();
-        } else if (cover != null && cover.trim().isNotEmpty) {
-          coverUrl = cover.trim();
-        }
-        if (coverUrl.isNotEmpty && !coverUrl.startsWith('http')) {
-          coverUrl = coverUrl.startsWith('/') ? '$_cdnBase$coverUrl' : '$_cdnBase/$coverUrl';
-        }
-      }
+      final altTitle = (data['alternative_title'] as String?)?.trim();
+      final coverUrl = _absolutize(
+        ((data['cover_portrait_url'] as String?)?.trim().isNotEmpty ?? false)
+            ? data['cover_portrait_url'] as String
+            : (data['cover_image_url'] as String? ?? ''),
+      );
 
       return manga.copyWith(
-        description: desc ?? manga.description,
-        genres: genres,
+        description: (data['description'] as String?) ?? manga.description,
+        genres: genres.isNotEmpty ? genres : manga.genres,
         coverUrl: coverUrl.isNotEmpty ? coverUrl : manga.coverUrl,
         author: authors.isNotEmpty ? authors.join(', ') : manga.author,
         artist: artists.isNotEmpty ? artists.join(', ') : manga.artist,
-        altTitle: (altTitle != null && altTitle.trim().isNotEmpty) ? altTitle.trim() : manga.altTitle,
-        status: status,
+        altTitle: (altTitle != null && altTitle.isNotEmpty)
+            ? altTitle
+            : manga.altTitle,
+        status: _parseStatus(data['status']),
       );
     } catch (_) {
       return manga;
@@ -322,70 +321,93 @@ class ShinigamiParser extends MangaParser {
 
   @override
   Future<List<MangaChapter>> getChapters(Manga manga) async {
-    final mId = manga.url;
+    final mId = _mangaId(manga);
+    final chapters = <MangaChapter>[];
+    var offset = 0;
+    var guard = 0;
+
     try {
-      final res = await PanovaultHttpClient.instance.get<Map<String, dynamic>>(
-        '$_apiBase/chapter/$mId/list?page=1&page_size=9999&sort_by=chapter_number&sort_order=desc',
-        headers: headers,
-      );
+      while (guard++ < 40) {
+        final url = '$_apiBase/chapter/$mId/list'
+            '?offset=$offset&limit=$_chapterPageSize'
+            '&sort_by=chapter_number&sort_order=desc';
 
-      final dataList = res.data?['data'] as List<dynamic>? ?? [];
-      final chapters = <MangaChapter>[];
+        final res =
+            await PanovaultHttpClient.instance.get<Map<String, dynamic>>(
+          url,
+          headers: headers,
+        );
 
-      for (final item in dataList) {
-        if (item is! Map<String, dynamic>) continue;
+        final dataList = res.data?['data'] as List<dynamic>? ?? <dynamic>[];
+        if (dataList.isEmpty) break;
 
-        final chId = item['chapter_id'] as String? ?? '';
-        final chNum = (item['chapter_number'] as num?)?.toDouble() ?? 0.0;
-        final rawTitle = item['chapter_title'] as String?;
-        final title = (rawTitle != null && rawTitle.trim().isNotEmpty)
-            ? 'Chapter $chNum: $rawTitle'
-            : 'Chapter $chNum';
+        for (final item in dataList) {
+          if (item is! Map<String, dynamic>) continue;
+          final chId = (item['chapter_id'] as String?)?.trim() ?? '';
+          if (chId.isEmpty) continue;
 
-        final releaseDateStr = item['release_date'] as String? ?? item['created_at'] as String?;
-        final uploadDate = releaseDateStr != null ? DateTime.tryParse(releaseDateStr) : null;
+          final chNum = (item['chapter_number'] as num?)?.toDouble() ?? 0.0;
+          final rawTitle = (item['chapter_title'] as String?)?.trim() ?? '';
+          final title =
+              rawTitle.isNotEmpty ? 'Chapter $chNum: $rawTitle' : 'Chapter $chNum';
 
-        chapters.add(MangaChapter(
-          id: '${id}_${manga.id}_$chId',
-          mangaId: manga.id,
-          title: title,
-          number: chNum,
-          url: chId, // Store raw chapter_id in url field
-          uploadDate: uploadDate,
-        ));
+          final releaseDateStr =
+              (item['release_date'] as String?) ?? (item['created_at'] as String?);
+
+          chapters.add(MangaChapter(
+            id: '${id}_${manga.id}_$chId',
+            mangaId: manga.id,
+            title: title,
+            number: chNum,
+            url: chId,
+            uploadDate:
+                releaseDateStr != null ? DateTime.tryParse(releaseDateStr) : null,
+          ));
+        }
+
+        final meta = res.data?['meta'] as Map<String, dynamic>?;
+        final hasNext = meta?['has_next'] == true;
+        if (!hasNext) break;
+        offset += _chapterPageSize;
       }
 
       chapters.sort((a, b) => b.number.compareTo(a.number));
       return chapters;
     } catch (_) {
-      return [];
+      return chapters;
     }
   }
 
   @override
   Future<List<MangaPage>> getPages(MangaChapter chapter) async {
-    final chId = chapter.url;
     try {
       final res = await PanovaultHttpClient.instance.get<Map<String, dynamic>>(
-        '$_apiBase/chapter/detail/$chId',
+        '$_apiBase/chapter/detail/${chapter.url}',
         headers: headers,
       );
 
       final data = res.data?['data'] as Map<String, dynamic>?;
-      final chData = data?['chapter'] as Map<String, dynamic>?;
-      final basePath = chData?['path'] as String? ?? '';
-      final images = chData?['data'] as List<dynamic>? ?? [];
+      if (data == null) return [];
+
+      final chData = data['chapter'] as Map<String, dynamic>?;
+      if (chData == null) return [];
+
+      final base = _absolutize((data['base_url'] as String?) ?? '');
+      final baseUrl = base.isEmpty ? _cdnBase : base;
+      final path = (chData['path'] as String?) ?? '';
+      final images = chData['data'] as List<dynamic>? ?? <dynamic>[];
 
       final pages = <MangaPage>[];
-      for (int i = 0; i < images.length; i++) {
-        final imgExt = images[i] as String;
+      for (var i = 0; i < images.length; i++) {
+        final file = images[i];
+        if (file is! String || file.trim().isEmpty) continue;
+        final prefix = path.startsWith('/') ? path : '/$path';
         pages.add(MangaPage(
-          index: i,
-          url: '$_cdnBase$basePath$imgExt',
+          index: pages.length,
+          url: '$baseUrl$prefix${file.trim()}',
           headers: headers,
         ));
       }
-
       return pages;
     } catch (_) {
       return [];

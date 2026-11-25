@@ -14,7 +14,7 @@ import 'package:panovault/core/theme/app_theme.dart';
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 
 void main() {
-  group('Kuroku Models & Registry Tests', () {
+  group('Panovault Models & Registry Tests', () {
     test('Manga serialization round-trip', () {
       const manga = Manga(
         id: 'mangapill_123',
@@ -97,7 +97,7 @@ void main() {
 
       final shinigami = registry.getParser('shinigami');
       expect(shinigami, isNotNull);
-      expect(shinigami!.domain, 'id.shinigami.asia');
+      expect(shinigami!.domain, 's1.shinigami.mx');
       expect(shinigami.availableCategories, contains('Manhwa'));
       expect(shinigami.availableCategories, contains('Project'));
       expect(shinigami.availableGenres, contains('Action'));

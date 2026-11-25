@@ -9,6 +9,19 @@ import '../manga_parser.dart';
 class WeebCentralParser extends MangaParser {
   String? _customDomain;
 
+  /// Accepts raw series id, prefixed DB id (`weebcentral_<id>`), or full URL.
+  String _seriesId(Manga manga) {
+    final raw = manga.url.trim();
+    if (raw.contains('/series/')) {
+      final segs = Uri.parse(raw).pathSegments;
+      final i = segs.indexOf('series');
+      if (i >= 0 && segs.length > i + 1) return segs[i + 1];
+    }
+    final prefix = '${id}_';
+    if (raw.startsWith(prefix)) return raw.substring(prefix.length);
+    return raw;
+  }
+
   void setCustomDomain(String newDomain) {
     _customDomain = newDomain.replaceAll('https://', '').replaceAll('http://', '').replaceAll('/', '').trim();
   }
@@ -178,7 +191,7 @@ class WeebCentralParser extends MangaParser {
 
   @override
   Future<Manga> getDetails(Manga manga) async {
-    final mangaId = manga.url;
+    final mangaId = _seriesId(manga);
     try {
       final res = await PanovaultHttpClient.instance.get<String>(
         'https://$domain/series/$mangaId',
@@ -230,7 +243,7 @@ class WeebCentralParser extends MangaParser {
 
   @override
   Future<List<MangaChapter>> getChapters(Manga manga) async {
-    final mangaId = manga.url;
+    final mangaId = _seriesId(manga);
     try {
       // 1. Fetch full chapter list
       final res = await PanovaultHttpClient.instance.get<String>(

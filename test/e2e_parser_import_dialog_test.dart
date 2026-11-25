@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:panovault/core/theme/app_theme.dart';
 import 'package:panovault/core/parser/parser_registry.dart';
+import 'preview_output.dart';
 
 Future<void> _loadTestFonts() async {
   try {
@@ -149,7 +150,7 @@ void main() {
         final image = await boundary.toImage(pixelRatio: 1.0);
         final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
         if (byteData != null) {
-          const path = '/opt/data/profiles/dev-three/cache/scratch/source_picker_with_import.png';
+          final path = previewFile('source_picker_with_import.png').path;
           File(path).writeAsBytesSync(byteData.buffer.asUint8List());
           print('Saved Source Picker preview: $path');
         }

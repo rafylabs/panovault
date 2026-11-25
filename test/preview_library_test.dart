@@ -11,6 +11,7 @@ import 'package:panovault/core/database/models/manga.dart';
 import 'package:panovault/core/theme/app_theme.dart';
 import 'package:panovault/features/library/providers/library_provider.dart';
 import 'package:panovault/features/library/screens/library_screen.dart';
+import 'preview_output.dart';
 
 Future<void> _loadSystemFonts() async {
   try {
@@ -137,7 +138,7 @@ void main() {
       final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
       final bytes = byteData!.buffer.asUint8List();
 
-      final file = File('/opt/data/profiles/dev-three/cache/scratch/library_screen_render.png');
+      final file = previewFile('library_screen_render.png');
       file.writeAsBytesSync(bytes);
       print('Saved Library preview: ${file.path}');
     });

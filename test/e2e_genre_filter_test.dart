@@ -12,6 +12,7 @@ import 'package:panovault/core/parser/parser_registry.dart';
 import 'package:panovault/core/theme/app_theme.dart';
 import 'package:panovault/features/catalog/providers/catalog_provider.dart';
 import 'package:panovault/features/catalog/screens/catalog_screen.dart';
+import 'preview_output.dart';
 
 Future<void> _loadSystemFonts() async {
   try {
@@ -194,7 +195,7 @@ void main() {
         final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
         final pngBytes = byteData!.buffer.asUint8List();
 
-        final file = File('/opt/data/profiles/dev-three/cache/scratch/catalog_multi_genre_filter.png');
+        final file = previewFile('catalog_multi_genre_filter.png');
         file.writeAsBytesSync(pngBytes);
         print('Saved Catalog preview: ${file.path}');
         expect(file.existsSync(), isTrue);
@@ -361,7 +362,7 @@ void main() {
         final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
         final pngBytes = byteData!.buffer.asUint8List();
 
-        final file = File('/opt/data/profiles/dev-three/cache/scratch/weebcentral_filter_sheet_preview.png');
+        final file = previewFile('weebcentral_filter_sheet_preview.png');
         file.writeAsBytesSync(pngBytes);
         print('Saved Filter Sheet preview: ${file.path}');
 
@@ -498,7 +499,7 @@ void main() {
         final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
         final pngBytes = byteData!.buffer.asUint8List();
 
-        final file = File('/opt/data/profiles/dev-three/cache/scratch/manga_detail_genres_preview.png');
+        final file = previewFile('manga_detail_genres_preview.png');
         file.writeAsBytesSync(pngBytes);
         print('Saved Manga Detail Genres preview: ${file.path}');
 

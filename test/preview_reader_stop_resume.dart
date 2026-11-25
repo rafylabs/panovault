@@ -6,6 +6,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
+import 'preview_output.dart';
 
 Future<void> _loadSystemFonts() async {
   try {
@@ -160,7 +161,7 @@ void main() {
       final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
       final bytes = byteData!.buffer.asUint8List();
 
-      final file = File('/opt/data/profiles/dev-three/cache/scratch/stop_middle_preview.png');
+      final file = previewFile('stop_middle_preview.png');
       file.writeAsBytesSync(bytes);
       print('Saved STOP preview: ${file.path}');
     });
@@ -227,7 +228,7 @@ void main() {
       final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
       final bytes = byteData!.buffer.asUint8List();
 
-      final file = File('/opt/data/profiles/dev-three/cache/scratch/resume_middle_preview.png');
+      final file = previewFile('resume_middle_preview.png');
       file.writeAsBytesSync(bytes);
       print('Saved RESUME preview: ${file.path}');
     });
