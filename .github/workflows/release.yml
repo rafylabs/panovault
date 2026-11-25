@@ -42,7 +42,7 @@ jobs:
   build-ios:
     name: Build iOS IPA (Sideload)
     needs: [validate]
-    runs-on: macos-14
+    runs-on: macos-latest
 
     steps:
       - name: Checkout Source Code
@@ -58,16 +58,31 @@ jobs:
       - name: Install Dependencies
         run: flutter pub get
 
-      - name: Build iOS Application (No Code Sign)
-        run: flutter build ios --no-codesign --release
+      - name: Build iOS Application (Unsigned Device Build)
+        run: |
+          flutter build ios --release --no-codesign || true
+          if [ ! -d build/ios/iphoneos/Runner.app ]; then
+            echo "flutter build ios failed; falling back to direct xcodebuild"
+            flutter precache --ios
+            cd ios && pod install --repo-update
+            xcodebuild -workspace Runner.xcworkspace -scheme Runner \
+              -configuration Release -sdk iphoneos -destination 'generic/platform=iOS' \
+              CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
+              DEVELOPMENT_TEAM="" PROVISIONING_PROFILE_SPECIFIER="" \
+              -derivedDataPath ../build/ios_dd build
+          fi
+          test -d build/ios/iphoneos/Runner.app || test -d build/ios_dd/Build/Products/Release-iphoneos/Runner.app
 
       - name: Package into Sideloadable IPA
         run: |
+          APP=$(ls -d build/ios/iphoneos/Runner.app 2>/dev/null || echo build/ios_dd/Build/Products/Release-iphoneos/Runner.app)
+          echo "packaging $APP"
           mkdir -p build/release-assets/Payload
-          cp -r build/ios/iphoneos/Runner.app build/release-assets/Payload/Panovault.app
+          cp -r "$APP" build/release-assets/Payload/Panovault.app
           cd build/release-assets
           zip -r -q Panovault.ipa Payload
           rm -rf Payload
+          ls -la Panovault.ipa
 
       - name: Upload iOS Asset
         uses: actions/upload-artifact@v4
