@@ -2,6 +2,14 @@
 
 All notable changes to Panovault will be documented in this file.
 
+## [v1.4.5] - 2026-11-25
+### 🚀 Migrasi Flutter 3.50 & Perbaikan Pipeline Rilis:
+- ⚙️ **Migrasi Toolchain Flutter 3.50**: Proyek dimigrasikan ke Flutter 3.50.1 / Dart 3.14 dengan pemisahan paket `material_ui`, bump AGP Android ke 9.1.1, serta penyesuaian seluruh impor Material di 16 berkas.
+- 🍎 **Perbaikan Build iOS IPA (Sideload)**: Runner CI dipindah ke `macos-latest` dengan fallback `xcodebuild` unsigned, sehingga berkas `.ipa` kembali diproduksi tanpa memerlukan Development Team.
+- 🧪 **Test Portabel di CI**: Direktori output preview kini diresolusi lewat `PANOVAULT_PREVIEW_DIR`, `$HOME/Pictures/panovault-previews`, atau direktori temp — tidak lagi bergantung pada path lokal mesin developer.
+- 🔗 **Normalisasi Identitas Manga Lintas Parser**: Parser Shinigami dan WeebCentral kini memulihkan chapter untuk ID mentah, ID berprefiks `source_`, maupun URL penuh, memperbaiki daftar chapter kosong pada favorit yang disimpan dari kartu History.
+- 📚 **Parser Shinigami Diperluas**: Dukungan katalog, detail, dan chapter terhadap backend asli lengkap dengan penanganan struktur JSON yang bervariasi.
+
 ## [v1.4.4] - 2026-10-26
 ### ⚡ Pembaruan Sumber & Penyederhanaan:
 - 🚀 **Sumber Bawaan Utama Baru**: Mengintegrasikan parser bawaan baru berkecepatan tinggi sebagai sumber default aplikasi dengan navigasi katalog instan dan paginasi stabil.
