@@ -242,7 +242,14 @@ class WeebCentralParser extends MangaParser {
   }
 
   @override
-  Future<List<MangaChapter>> getChapters(Manga manga) async {
+  Future<List<MangaChapter>> getChapters(Manga manga) =>
+      _getChapters(manga, strict: false);
+
+  @override
+  Future<List<MangaChapter>> getChaptersForUpdates(Manga manga) =>
+      _getChapters(manga, strict: true);
+
+  Future<List<MangaChapter>> _getChapters(Manga manga, {required bool strict}) async {
     final mangaId = _seriesId(manga);
     try {
       // 1. Fetch full chapter list
@@ -252,6 +259,9 @@ class WeebCentralParser extends MangaParser {
         responseType: ResponseType.plain,
       );
 
+      if (strict && (res.data == null || res.data!.trim().isEmpty)) {
+        throw const FormatException('Missing WeebCentral chapter response');
+      }
       if (res.data == null) return [];
       final doc = html_parser.parse(res.data);
       final links = doc.querySelectorAll('a[href*="/chapters/"]');
@@ -263,6 +273,10 @@ class WeebCentralParser extends MangaParser {
         if (href == null) continue;
 
         final pathSegments = Uri.parse(href.startsWith('http') ? href : 'https://$domain$href').pathSegments;
+        if (strict && (pathSegments.length != 2 ||
+            pathSegments.first != 'chapters' || pathSegments.last.trim().isEmpty)) {
+          throw const FormatException('Invalid WeebCentral chapter link');
+        }
         if (pathSegments.length < 2) continue;
         final chapterId = pathSegments[1];
 
@@ -289,6 +303,7 @@ class WeebCentralParser extends MangaParser {
       chapters.sort((a, b) => b.number.compareTo(a.number));
       return chapters;
     } catch (_) {
+      if (strict) rethrow;
       return [];
     }
   }

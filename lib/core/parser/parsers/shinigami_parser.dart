@@ -320,7 +320,14 @@ class ShinigamiParser extends MangaParser {
   }
 
   @override
-  Future<List<MangaChapter>> getChapters(Manga manga) async {
+  Future<List<MangaChapter>> getChapters(Manga manga) =>
+      _getChapters(manga, strict: false);
+
+  @override
+  Future<List<MangaChapter>> getChaptersForUpdates(Manga manga) =>
+      _getChapters(manga, strict: true);
+
+  Future<List<MangaChapter>> _getChapters(Manga manga, {required bool strict}) async {
     final mId = _mangaId(manga);
     final chapters = <MangaChapter>[];
     final seenChapterIds = <String>{};
@@ -341,10 +348,27 @@ class ShinigamiParser extends MangaParser {
           headers: headers,
         );
 
+        if (strict && res.data?['data'] is! List) {
+          throw const FormatException('Invalid Shinigami chapter list');
+        }
+        final meta = res.data?['meta'] as Map<String, dynamic>?;
+        if (strict && (meta == null || meta['has_next'] is! bool)) {
+          throw const FormatException('Invalid Shinigami pagination metadata');
+        }
         final dataList = res.data?['data'] as List<dynamic>? ?? <dynamic>[];
+        if (strict && dataList.isEmpty && meta?['has_next'] == true) {
+          throw const FormatException('Empty Shinigami page has a continuation');
+        }
         if (dataList.isEmpty) break;
 
         for (final item in dataList) {
+          if (strict && (item is! Map<String, dynamic> ||
+              item['chapter_id'] is! String ||
+              (item['chapter_id'] as String).trim().isEmpty ||
+              item['chapter_number'] is! num ||
+              !(item['chapter_number'] as num).isFinite)) {
+            throw const FormatException('Invalid Shinigami chapter entry');
+          }
           if (item is! Map<String, dynamic>) continue;
           final chId = (item['chapter_id'] as String?)?.trim() ?? '';
           if (chId.isEmpty || !seenChapterIds.add(chId)) continue;
@@ -368,19 +392,25 @@ class ShinigamiParser extends MangaParser {
           ));
         }
 
-        final meta = res.data?['meta'] as Map<String, dynamic>?;
         final hasNext = meta?['has_next'] == true;
         if (!hasNext) break;
         final nextCursor = (meta?['next_cursor'] as String?)?.trim();
         if (nextCursor == null || nextCursor.isEmpty || !seenCursors.add(nextCursor)) {
+          if (strict) {
+            throw const FormatException('Missing or repeated Shinigami cursor');
+          }
           break;
         }
         cursor = nextCursor;
+        if (strict && guard == 40) {
+          throw const FormatException('Shinigami chapter pagination limit reached');
+        }
       }
 
       chapters.sort((a, b) => b.number.compareTo(a.number));
       return chapters;
     } catch (_) {
+      if (strict) rethrow;
       return chapters;
     }
   }

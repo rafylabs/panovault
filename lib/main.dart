@@ -11,6 +11,7 @@ import 'core/parser/parser_registry.dart';
 import 'core/download/download_manager.dart';
 import 'core/notifications/notification_service.dart';
 import 'core/services/library_update_service.dart';
+import 'core/services/background_library_updates.dart';
 import 'core/services/app_update_service.dart';
 import 'features/catalog/providers/catalog_provider.dart';
 
@@ -23,6 +24,11 @@ void main() async {
   await NotificationService.instance.init();
   await NotificationService.instance.requestPermissions();
   await LibraryUpdateService.instance.init();
+  try {
+    await registerBackgroundLibraryUpdates();
+  } catch (error, stack) {
+    debugPrint('Unable to schedule background chapter updates: $error\n$stack');
+  }
 
   // Dark edge-to-edge system UI overlay
   SystemChrome.setSystemUIOverlayStyle(
@@ -64,11 +70,32 @@ class MainNavigationScreen extends ConsumerStatefulWidget {
   ConsumerState<MainNavigationScreen> createState() => _MainNavigationScreenState();
 }
 
-class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen> {
+class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen>
+    with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _checkForAppUpdates();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _refreshChapterBadge();
+  }
+
+  Future<void> _refreshChapterBadge() async {
+    try {
+      await LibraryUpdateService.instance.refreshUnseenCount();
+    } catch (error, stack) {
+      debugPrint('Unable to refresh chapter badge: $error\n$stack');
+    }
   }
 
   Future<void> _checkForAppUpdates() async {

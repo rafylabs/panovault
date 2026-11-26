@@ -46,5 +46,11 @@ abstract class MangaParser {
 
   Future<List<MangaChapter>> getChapters(Manga manga);
 
+  /// Update jobs must distinguish source failures from a valid empty catalog.
+  /// Fail closed until a parser explicitly implements strict fetching; reader
+  /// methods may intentionally swallow errors or return incomplete catalogs.
+  Future<List<MangaChapter>> getChaptersForUpdates(Manga manga) async =>
+      throw UnsupportedError('Strict chapter updates are not supported by $id');
+
   Future<List<MangaPage>> getPages(MangaChapter chapter);
 }

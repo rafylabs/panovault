@@ -178,11 +178,19 @@ class SettingsScreen extends ConsumerWidget {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('Checking for new chapters...')),
               );
-              final count = await LibraryUpdateService.instance.checkForUpdates(silent: false);
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text(count > 0 ? 'Found $count new chapters!' : 'No new chapters found')),
-                );
+              try {
+                final count = await LibraryUpdateService.instance.checkForUpdates(silent: false);
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(count > 0 ? 'Found $count new chapters!' : 'No new chapters found')),
+                  );
+                }
+              } catch (_) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Some chapter checks failed. Please try again.')),
+                  );
+                }
               }
             },
           ),

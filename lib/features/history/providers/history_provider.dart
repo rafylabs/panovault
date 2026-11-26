@@ -1,15 +1,12 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
+
 import '../../../core/database/app_database.dart';
 import '../../../core/database/models/manga.dart';
 import '../../../core/database/models/history_entry.dart';
 import '../../../core/database/models/chapter_update.dart';
 
-enum HistoryFilter {
-  all,
-  readOnly,
-  updatesOnly,
-}
+enum HistoryFilter { all, readOnly, updatesOnly }
 
 class UnifiedHistoryItem {
   final String id;
@@ -28,36 +25,36 @@ class UnifiedHistoryItem {
   final ChapterUpdate? updateEntry;
 
   UnifiedHistoryItem.read(HistoryEntry entry)
-      : id = 'read_${entry.manga.id}_${entry.chapter.id}',
-        mangaId = entry.manga.id,
-        mangaTitle = entry.manga.title,
-        coverUrl = entry.manga.coverUrl,
-        sourceId = entry.manga.sourceId,
-        chapterId = entry.chapter.id,
-        chapterTitle = entry.chapter.title,
-        chapterNumber = entry.chapter.number,
-        timestamp = entry.updatedAt,
-        isUpdate = false,
-        page = entry.page,
-        isSeen = true,
-        readEntry = entry,
-        updateEntry = null;
+    : id = 'read_${entry.manga.id}_${entry.chapter.id}',
+      mangaId = entry.manga.id,
+      mangaTitle = entry.manga.title,
+      coverUrl = entry.manga.coverUrl,
+      sourceId = entry.manga.sourceId,
+      chapterId = entry.chapter.id,
+      chapterTitle = entry.chapter.title,
+      chapterNumber = entry.chapter.number,
+      timestamp = entry.updatedAt,
+      isUpdate = false,
+      page = entry.page,
+      isSeen = true,
+      readEntry = entry,
+      updateEntry = null;
 
   UnifiedHistoryItem.update(ChapterUpdate update)
-      : id = 'update_${update.id}',
-        mangaId = update.mangaId,
-        mangaTitle = update.mangaTitle,
-        coverUrl = update.coverUrl,
-        sourceId = update.sourceId,
-        chapterId = update.chapterId,
-        chapterTitle = update.chapterTitle,
-        chapterNumber = update.chapterNumber,
-        timestamp = update.detectedAt,
-        isUpdate = true,
-        page = 0,
-        isSeen = update.isSeen,
-        readEntry = null,
-        updateEntry = update;
+    : id = 'update_${update.id}',
+      mangaId = update.mangaId,
+      mangaTitle = update.mangaTitle,
+      coverUrl = update.coverUrl,
+      sourceId = update.sourceId,
+      chapterId = update.chapterId,
+      chapterTitle = update.chapterTitle,
+      chapterNumber = update.chapterNumber,
+      timestamp = update.detectedAt,
+      isUpdate = true,
+      page = 0,
+      isSeen = update.isSeen,
+      readEntry = null,
+      updateEntry = update;
 }
 
 class UpdateCardItem {
@@ -99,16 +96,31 @@ class UnifiedHistoryData {
 }
 
 class HistoryNotifier extends StateNotifier<AsyncValue<UnifiedHistoryData>> {
-  HistoryNotifier() : super(const AsyncValue.loading()) {
+  final AppDatabase _database;
+  Object? _lastRefreshError;
+  StackTrace? _lastRefreshStackTrace;
+
+  /// Most recent refresh failure; retained until a load succeeds.
+  Object? get lastRefreshError => _lastRefreshError;
+  StackTrace? get lastRefreshStackTrace => _lastRefreshStackTrace;
+
+  HistoryNotifier({AppDatabase? database})
+    : _database = database ?? AppDatabase.instance,
+      super(const AsyncValue.loading()) {
     loadHistory();
   }
 
   Future<void> loadHistory() async {
-    state = const AsyncValue.loading();
+    final previous = state;
+    if (previous.hasValue) {
+      state = AsyncValue<UnifiedHistoryData>.data(previous.value!);
+    } else {
+      state = const AsyncValue<UnifiedHistoryData>.loading();
+    }
     try {
-      final readEntries = await AppDatabase.instance.getHistory();
-      final updateEntries = await AppDatabase.instance.getRecentUpdates(limit: 100);
-      final favorites = await AppDatabase.instance.getFavorites();
+      final readEntries = await _database.getHistory();
+      final updateEntries = await _database.getRecentUpdates(limit: 100);
+      final favorites = await _database.getFavorites();
       final favIds = favorites.map((m) => m.id).toSet();
 
       final combined = <UnifiedHistoryItem>[
@@ -138,73 +150,103 @@ class HistoryNotifier extends StateNotifier<AsyncValue<UnifiedHistoryData>> {
         }
       }
 
-      final progressMap = await AppDatabase.instance.getReadingProgressForManga(targetMangaIds.toList());
+      final progressMap = await _database.getReadingProgressForManga(
+        targetMangaIds.toList(),
+      );
 
       final List<UpdateCardItem> updateCards = [];
       for (final mid in targetMangaIds) {
         if (mangaLatestUpdate.containsKey(mid)) {
           final u = mangaLatestUpdate[mid]!;
-          updateCards.add(UpdateCardItem(
-            mangaId: u.mangaId,
-            mangaTitle: u.mangaTitle,
-            coverUrl: u.coverUrl,
-            sourceId: u.sourceId,
-            updateCount: mangaUpdateCounts[mid] ?? 1,
-            readingProgress: progressMap[mid] ?? 0.0,
-            isFavorite: favIds.contains(mid),
-          ));
+          updateCards.add(
+            UpdateCardItem(
+              mangaId: u.mangaId,
+              mangaTitle: u.mangaTitle,
+              coverUrl: u.coverUrl,
+              sourceId: u.sourceId,
+              updateCount: mangaUpdateCounts[mid] ?? 1,
+              readingProgress: progressMap[mid] ?? 0.0,
+              isFavorite: favIds.contains(mid),
+            ),
+          );
         } else {
-          final r = readEntries.firstWhere((element) => element.manga.id == mid);
-          updateCards.add(UpdateCardItem(
-            mangaId: r.manga.id,
-            mangaTitle: r.manga.title,
-            coverUrl: r.manga.coverUrl,
-            sourceId: r.manga.sourceId,
-            updateCount: 0,
-            readingProgress: progressMap[mid] ?? 0.0,
-            isFavorite: favIds.contains(mid),
-          ));
+          final r = readEntries.firstWhere(
+            (element) => element.manga.id == mid,
+          );
+          updateCards.add(
+            UpdateCardItem(
+              mangaId: r.manga.id,
+              mangaTitle: r.manga.title,
+              coverUrl: r.manga.coverUrl,
+              sourceId: r.manga.sourceId,
+              updateCount: 0,
+              readingProgress: progressMap[mid] ?? 0.0,
+              isFavorite: favIds.contains(mid),
+            ),
+          );
         }
       }
 
-      state = AsyncValue.data(UnifiedHistoryData(
-        allItems: combined,
-        updateCards: updateCards,
-        readCount: readEntries.length,
-        updateCount: updateEntries.length,
-        unseenUpdateCount: unseen,
-        favoriteMangaIds: favIds,
-      ));
+      _lastRefreshError = null;
+      _lastRefreshStackTrace = null;
+      state = AsyncValue.data(
+        UnifiedHistoryData(
+          allItems: combined,
+          updateCards: updateCards,
+          readCount: readEntries.length,
+          updateCount: updateEntries.length,
+          unseenUpdateCount: unseen,
+          favoriteMangaIds: favIds,
+        ),
+      );
     } catch (e, st) {
-      state = AsyncValue.error(e, st);
+      if (previous.hasValue) {
+        _lastRefreshError = e;
+        _lastRefreshStackTrace = st;
+        state = AsyncValue<UnifiedHistoryData>.data(previous.requireValue);
+      } else {
+        state = AsyncValue<UnifiedHistoryData>.error(e, st);
+      }
     }
   }
 
-  Future<void> toggleFavorite(String mangaId, String title, String coverUrl, String sourceId) async {
-    final manga = await AppDatabase.instance.getManga(mangaId) ??
-        Manga(id: mangaId, title: title, url: mangaId, coverUrl: coverUrl, sourceId: sourceId);
-    await AppDatabase.instance.toggleFavorite(manga);
+  Future<void> toggleFavorite(
+    String mangaId,
+    String title,
+    String coverUrl,
+    String sourceId,
+  ) async {
+    final manga =
+        await _database.getManga(mangaId) ??
+        Manga(
+          id: mangaId,
+          title: title,
+          url: mangaId,
+          coverUrl: coverUrl,
+          sourceId: sourceId,
+        );
+    await _database.toggleFavorite(manga);
     await loadHistory();
   }
 
   Future<void> markAllUpdatesSeen() async {
-    await AppDatabase.instance.markAllUpdatesSeen();
+    await _database.markAllUpdatesSeen();
     await loadHistory();
   }
 
   Future<void> clearReadingHistory() async {
-    await AppDatabase.instance.clearHistory();
+    await _database.clearHistory();
     await loadHistory();
   }
 
   Future<void> clearUpdateNotifications() async {
-    await AppDatabase.instance.clearUpdates();
+    await _database.clearUpdates();
     await loadHistory();
   }
 
   Future<void> clearAll() async {
-    await AppDatabase.instance.clearHistory();
-    await AppDatabase.instance.clearUpdates();
+    await _database.clearHistory();
+    await _database.clearUpdates();
     await loadHistory();
   }
 
@@ -230,15 +272,18 @@ class HistoryNotifier extends StateNotifier<AsyncValue<UnifiedHistoryData>> {
     }
 
     if (readEntries.isNotEmpty) {
-      await AppDatabase.instance.deleteHistoryEntries(readEntries);
+      await _database.deleteHistoryEntries(readEntries);
     }
     if (updateIds.isNotEmpty) {
-      await AppDatabase.instance.deleteUpdateEntries(updateIds);
+      await _database.deleteUpdateEntries(updateIds);
     }
     await loadHistory();
   }
 }
 
-final historyProvider = StateNotifierProvider<HistoryNotifier, AsyncValue<UnifiedHistoryData>>((ref) {
-  return HistoryNotifier();
-});
+final historyProvider =
+    StateNotifierProvider<HistoryNotifier, AsyncValue<UnifiedHistoryData>>((
+      ref,
+    ) {
+      return HistoryNotifier();
+    });

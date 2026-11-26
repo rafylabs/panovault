@@ -1,4 +1,6 @@
 import 'package:flutter/foundation.dart';
+import '../database/app_database.dart';
+import 'dynamic_manga_parser.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'manga_parser.dart';
 import 'parsers/mangapill_parser.dart';
@@ -57,9 +59,10 @@ class ParserRegistry {
     }
   }
 
-  Future<void> loadCustomSources() async {
+  Future<void> loadCustomSources({bool strict = false}) async {
     try {
       final prefs = await SharedPreferences.getInstance();
+      await prefs.reload();
       
       final mangapillDomain = prefs.getString('domain_mangapill');
       if (mangapillDomain != null && mangapillDomain.isNotEmpty) {
@@ -83,7 +86,13 @@ class ParserRegistry {
       } else {
         _activeParserId = 'mangapill';
       }
-    } catch (_) {}
+      for (final config in await AppDatabase.instance.getCustomSources()) {
+        registerParser(DynamicMangaParser(config));
+      }
+    } catch (error, stack) {
+      debugPrint('Unable to load sources: $error\n$stack');
+      if (strict) rethrow;
+    }
   }
 
   Future<void> updateSourceDomain(String id, String newDomain) async {

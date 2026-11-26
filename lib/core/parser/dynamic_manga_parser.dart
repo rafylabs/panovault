@@ -1,6 +1,8 @@
 import 'dart:convert';
+
 import 'package:html/parser.dart' as html_parser;
 import 'package:dio/dio.dart';
+
 import '../database/models/manga.dart';
 import '../database/models/chapter.dart';
 import '../database/models/manga_page.dart';
@@ -74,11 +76,15 @@ class CustomSourceConfig {
       }
     }
 
-    if (selectors == null && map.containsKey('selectors') && map['selectors'] is Map) {
+    if (selectors == null &&
+        map.containsKey('selectors') &&
+        map['selectors'] is Map) {
       selectors = Map<String, dynamic>.from(map);
     }
 
-    final id = map['id']?.toString() ?? 'custom_${DateTime.now().millisecondsSinceEpoch}';
+    final id =
+        map['id']?.toString() ??
+        'custom_${DateTime.now().millisecondsSinceEpoch}';
     final name = map['name']?.toString() ?? 'Custom Source';
     final domain = (map['domain']?.toString() ?? '')
         .replaceAll('https://', '')
@@ -128,11 +134,20 @@ class DynamicMangaParser extends MangaParser {
     return defaultHeaders;
   }
 
-  String _formatUrl(String template, {int page = 1, String? query, String? mangaId, String? chapterId}) {
+  String _formatUrl(
+    String template, {
+    int page = 1,
+    String? query,
+    String? mangaId,
+    String? chapterId,
+  }) {
     return template
         .replaceAll('{domain}', domain)
         .replaceAll('{page}', page.toString())
-        .replaceAll('{query}', query != null ? Uri.encodeComponent(query.trim()) : '')
+        .replaceAll(
+          '{query}',
+          query != null ? Uri.encodeComponent(query.trim()) : '',
+        )
         .replaceAll('{manga_id}', mangaId ?? '')
         .replaceAll('{chapter_id}', chapterId ?? '');
   }
@@ -230,14 +245,16 @@ class DynamicMangaParser extends MangaParser {
             ? item[urlKey].toString()
             : 'https://$domain/manga/$rawItemId';
 
-        list.add(Manga(
-          id: '${id}_$rawItemId',
-          title: title,
-          url: mangaUrl,
-          coverUrl: coverUrl,
-          sourceId: id,
-          status: MangaStatus.ongoing,
-        ));
+        list.add(
+          Manga(
+            id: '${id}_$rawItemId',
+            title: title,
+            url: mangaUrl,
+            coverUrl: coverUrl,
+            sourceId: id,
+            status: MangaStatus.ongoing,
+          ),
+        );
       }
 
       return list;
@@ -272,25 +289,30 @@ class DynamicMangaParser extends MangaParser {
       if (res.data == null) return [];
       final doc = html_parser.parse(res.data);
 
-      final cardSelector = selectors['card'] as String? ??
+      final cardSelector =
+          selectors['card'] as String? ??
           selectors['card_item'] as String? ??
           selectors['cardItem'] as String? ??
           'div.page-item-detail, div.manga, div.bsx, div.grid > div';
       final elements = doc.querySelectorAll(cardSelector);
 
-      final titleSelector = selectors['title'] as String? ??
+      final titleSelector =
+          selectors['title'] as String? ??
           selectors['card_title'] as String? ??
           selectors['cardTitle'] as String? ??
           '.post-title, h3, h4, h5, .tt, div.line-clamp-2, div.font-black';
-      final coverSelector = selectors['cover'] as String? ??
+      final coverSelector =
+          selectors['cover'] as String? ??
           selectors['card_cover'] as String? ??
           selectors['cardCover'] as String? ??
           'img';
-      final coverAttrs = (selectors['coverAttr'] as String? ??
-              selectors['cover_attr'] as String? ??
-              selectors['card_cover_attr'] as String? ??
-              selectors['cardCoverAttr'] as String?)
-          ?.split(',') ?? ['data-src', 'data-lazy-src', 'src', 'data-original'];
+      final coverAttrs =
+          (selectors['coverAttr'] as String? ??
+                  selectors['cover_attr'] as String? ??
+                  selectors['card_cover_attr'] as String? ??
+                  selectors['cardCoverAttr'] as String?)
+              ?.split(',') ??
+          ['data-src', 'data-lazy-src', 'src', 'data-original'];
 
       final list = <Manga>[];
       for (final el in elements) {
@@ -300,20 +322,27 @@ class DynamicMangaParser extends MangaParser {
         final href = a.attributes['href'];
         if (href == null || href.isEmpty) continue;
 
-        final titleEl = el.querySelector(titleSelector) ?? el.parent?.querySelector(titleSelector);
+        final titleEl =
+            el.querySelector(titleSelector) ??
+            el.parent?.querySelector(titleSelector);
         var title = titleEl?.text.trim() ?? a.attributes['title']?.trim() ?? '';
         if (title.isEmpty) {
-          final img = el.querySelector('img') ?? el.parent?.querySelector('img');
+          final img =
+              el.querySelector('img') ?? el.parent?.querySelector('img');
           title = img?.attributes['alt']?.trim() ?? '';
         }
         if (title.isEmpty) continue;
 
-        final img = el.querySelector(coverSelector) ?? el.parent?.querySelector(coverSelector);
+        final img =
+            el.querySelector(coverSelector) ??
+            el.parent?.querySelector(coverSelector);
         String coverUrl = '';
         if (img != null) {
           for (final attr in coverAttrs) {
             final val = img.attributes[attr.trim()];
-            if (val != null && val.trim().isNotEmpty && !val.trim().startsWith('data:')) {
+            if (val != null &&
+                val.trim().isNotEmpty &&
+                !val.trim().startsWith('data:')) {
               coverUrl = val.trim();
               break;
             }
@@ -322,14 +351,18 @@ class DynamicMangaParser extends MangaParser {
 
         final cleanSlug = href.split('/').where((s) => s.isNotEmpty).last;
 
-        list.add(Manga(
-          id: '${id}_$cleanSlug',
-          title: title,
-          url: href.startsWith('http') ? href : 'https://$domain$href',
-          coverUrl: coverUrl.startsWith('http') ? coverUrl : (coverUrl.isNotEmpty ? 'https://$domain$coverUrl' : ''),
-          sourceId: id,
-          status: MangaStatus.ongoing,
-        ));
+        list.add(
+          Manga(
+            id: '${id}_$cleanSlug',
+            title: title,
+            url: href.startsWith('http') ? href : 'https://$domain$href',
+            coverUrl: coverUrl.startsWith('http')
+                ? coverUrl
+                : (coverUrl.isNotEmpty ? 'https://$domain$coverUrl' : ''),
+            sourceId: id,
+            status: MangaStatus.ongoing,
+          ),
+        );
       }
 
       return list;
@@ -362,7 +395,9 @@ class DynamicMangaParser extends MangaParser {
 
       final elements = sourceConfig.type == 'themesia'
           ? doc.querySelectorAll('div.bsx')
-          : doc.querySelectorAll('div.page-item-detail, div.manga, div.badge-pos-1');
+          : doc.querySelectorAll(
+              'div.page-item-detail, div.manga, div.badge-pos-1',
+            );
 
       final list = <Manga>[];
       for (final el in elements) {
@@ -373,25 +408,29 @@ class DynamicMangaParser extends MangaParser {
         if (href == null || href.isEmpty) continue;
 
         final titleEl = el.querySelector('.post-title, h3, h4, h5, .tt');
-        final title = titleEl?.text.trim() ?? a.attributes['title']?.trim() ?? '';
+        final title =
+            titleEl?.text.trim() ?? a.attributes['title']?.trim() ?? '';
         if (title.isEmpty) continue;
 
         final img = el.querySelector('img');
-        final coverUrl = img?.attributes['data-src'] ??
+        final coverUrl =
+            img?.attributes['data-src'] ??
             img?.attributes['data-lazy-src'] ??
             img?.attributes['src'] ??
             '';
 
         final cleanSlug = href.split('/').where((s) => s.isNotEmpty).last;
 
-        list.add(Manga(
-          id: '${id}_$cleanSlug',
-          title: title,
-          url: href.startsWith('http') ? href : 'https://$domain$href',
-          coverUrl: coverUrl,
-          sourceId: id,
-          status: MangaStatus.ongoing,
-        ));
+        list.add(
+          Manga(
+            id: '${id}_$cleanSlug',
+            title: title,
+            url: href.startsWith('http') ? href : 'https://$domain$href',
+            coverUrl: coverUrl,
+            sourceId: id,
+            status: MangaStatus.ongoing,
+          ),
+        );
       }
 
       return list;
@@ -413,14 +452,16 @@ class DynamicMangaParser extends MangaParser {
       final doc = html_parser.parse(res.data);
 
       final selectors = sourceConfig.selectors;
-      final descSelector = selectors?['description'] as String? ??
+      final descSelector =
+          selectors?['description'] as String? ??
           selectors?['detail_description'] as String? ??
           selectors?['detailDescription'] as String? ??
           '.description-summary, .entry-content, .sinopsis, .entry-content-single, div.desc, p.text-sm';
       final descEl = doc.querySelector(descSelector);
       final desc = descEl?.text.trim();
 
-      final genreSelector = selectors?['genre'] as String? ??
+      final genreSelector =
+          selectors?['genre'] as String? ??
           selectors?['genres'] as String? ??
           selectors?['detail_genres'] as String? ??
           selectors?['detailGenres'] as String? ??
@@ -444,7 +485,17 @@ class DynamicMangaParser extends MangaParser {
   }
 
   @override
-  Future<List<MangaChapter>> getChapters(Manga manga) async {
+  Future<List<MangaChapter>> getChapters(Manga manga) =>
+      _getChapters(manga, strict: false);
+
+  @override
+  Future<List<MangaChapter>> getChaptersForUpdates(Manga manga) =>
+      _getChapters(manga, strict: true);
+
+  Future<List<MangaChapter>> _getChapters(
+    Manga manga, {
+    required bool strict,
+  }) async {
     final type = sourceConfig.type.toLowerCase();
 
     // 1. REST API Chapters
@@ -453,7 +504,10 @@ class DynamicMangaParser extends MangaParser {
       if (api != null && api['chaptersEndpoint'] != null) {
         try {
           final cleanMangaId = manga.id.replaceFirst('${id}_', '');
-          final url = _formatUrl(api['chaptersEndpoint'] as String, mangaId: cleanMangaId);
+          final url = _formatUrl(
+            api['chaptersEndpoint'] as String,
+            mangaId: cleanMangaId,
+          );
           final res = await PanovaultHttpClient.instance.get<dynamic>(
             url,
             headers: headers,
@@ -468,33 +522,63 @@ class DynamicMangaParser extends MangaParser {
           if (rawList is List) {
             final chIdKey = api['chapterIdKey'] as String? ?? 'id';
             final chTitleKey = api['chapterTitleKey'] as String? ?? 'title';
-            final chNumberKey = api['chapterNumberKey'] as String? ?? 'chapter_number';
+            final chNumberKey =
+                api['chapterNumberKey'] as String? ?? 'chapter_number';
             final chUrlKey = api['chapterUrlKey'] as String?;
 
             final chapters = <MangaChapter>[];
             for (final ch in rawList) {
-              if (ch is! Map) continue;
-              final chId = ch[chIdKey]?.toString() ?? '';
-              if (chId.isEmpty) continue;
+              if (ch is! Map) {
+                if (strict) {
+                  throw const FormatException('Invalid chapter entry');
+                }
+                continue;
+              }
+              final rawId = ch[chIdKey];
+              if (strict &&
+                  !((rawId is String && rawId.trim().isNotEmpty) ||
+                      (rawId is num && rawId.isFinite))) {
+                throw const FormatException('Invalid chapter ID');
+              }
+              final chId = rawId?.toString() ?? '';
+              if (chId.isEmpty) {
+                if (strict) throw const FormatException('Missing chapter ID');
+                continue;
+              }
 
-              final title = ch[chTitleKey]?.toString().trim() ?? 'Chapter $chId';
-              final chNum = double.tryParse(ch[chNumberKey]?.toString() ?? '') ?? 0.0;
+              final title =
+                  ch[chTitleKey]?.toString().trim() ?? 'Chapter $chId';
+              final rawNumber = ch[chNumberKey];
+              final parsedNumber = rawNumber is num || rawNumber is String
+                  ? double.tryParse(rawNumber.toString())
+                  : null;
+              if (strict && (parsedNumber == null || !parsedNumber.isFinite)) {
+                throw const FormatException('Invalid chapter number');
+              }
+              final chNum = parsedNumber ?? 0.0;
               final chUrl = chUrlKey != null && ch[chUrlKey] != null
                   ? ch[chUrlKey].toString()
                   : 'https://$domain/chapter/$chId';
 
-              chapters.add(MangaChapter(
-                id: '${id}_${manga.id}_$chId',
-                mangaId: manga.id,
-                title: title,
-                number: chNum,
-                url: chUrl,
-              ));
+              chapters.add(
+                MangaChapter(
+                  id: '${id}_${manga.id}_$chId',
+                  mangaId: manga.id,
+                  title: title,
+                  number: chNum,
+                  url: chUrl,
+                ),
+              );
             }
             chapters.sort((a, b) => b.number.compareTo(a.number));
             return chapters;
           }
-        } catch (_) {}
+          if (strict) {
+            throw const FormatException('Chapter API did not return a list');
+          }
+        } catch (_) {
+          if (strict) rethrow;
+        }
       }
     }
 
@@ -506,18 +590,23 @@ class DynamicMangaParser extends MangaParser {
         responseType: ResponseType.plain,
       );
 
-      if (res.data == null) return [];
+      if (res.data == null) {
+        if (strict) throw const FormatException('Missing chapter HTML');
+        return [];
+      }
       final doc = html_parser.parse(res.data);
 
       final selectors = sourceConfig.selectors;
-      final chSelector = selectors?['chapters'] as String? ??
+      final chSelector =
+          selectors?['chapters'] as String? ??
           selectors?['chapter_item'] as String? ??
           selectors?['chapterItem'] as String? ??
           'li.wp-manga-chapter a, ul.sub-chap-list a, .eph-num a, div.bxcl ul li a, div#chapters a';
       final links = doc.querySelectorAll(chSelector);
       final chapters = <MangaChapter>[];
 
-      final regexPattern = selectors?['chapterNumberRegex'] as String? ??
+      final regexPattern =
+          selectors?['chapterNumberRegex'] as String? ??
           selectors?['chapter_number_regex'] as String? ??
           selectors?['chapterRegex'] as String? ??
           r'([0-9.]+)';
@@ -526,26 +615,35 @@ class DynamicMangaParser extends MangaParser {
       for (int i = 0; i < links.length; i++) {
         final el = links[i];
         final href = el.attributes['href'];
+        if (strict && (href == null || href.trim().isEmpty)) {
+          throw const FormatException('Missing chapter link');
+        }
         if (href == null || href.isEmpty) continue;
 
         final title = el.text.trim();
         final match = numberRegex.firstMatch(title);
-        final rawNum = match != null ? (match.groupCount >= 1 ? match.group(1) : match.group(0)) : null;
-        final chNum = double.tryParse(rawNum ?? '') ?? (links.length - i).toDouble();
+        final rawNum = match != null
+            ? (match.groupCount >= 1 ? match.group(1) : match.group(0))
+            : null;
+        final chNum =
+            double.tryParse(rawNum ?? '') ?? (links.length - i).toDouble();
         final chSlug = href.split('/').where((s) => s.isNotEmpty).last;
 
-        chapters.add(MangaChapter(
-          id: '${id}_${manga.id}_$chSlug',
-          mangaId: manga.id,
-          title: title.isNotEmpty ? title : 'Chapter $chNum',
-          number: chNum,
-          url: href.startsWith('http') ? href : 'https://$domain$href',
-        ));
+        chapters.add(
+          MangaChapter(
+            id: '${id}_${manga.id}_$chSlug',
+            mangaId: manga.id,
+            title: title.isNotEmpty ? title : 'Chapter $chNum',
+            number: chNum,
+            url: href.startsWith('http') ? href : 'https://$domain$href',
+          ),
+        );
       }
 
       chapters.sort((a, b) => b.number.compareTo(a.number));
       return chapters;
     } catch (_) {
+      if (strict) rethrow;
       return [];
     }
   }
@@ -560,7 +658,10 @@ class DynamicMangaParser extends MangaParser {
       if (api != null && api['pagesEndpoint'] != null) {
         try {
           final cleanChapterId = chapter.id.split('_').last;
-          final url = _formatUrl(api['pagesEndpoint'] as String, chapterId: cleanChapterId);
+          final url = _formatUrl(
+            api['pagesEndpoint'] as String,
+            chapterId: cleanChapterId,
+          );
           final res = await PanovaultHttpClient.instance.get<dynamic>(
             url,
             headers: headers,
@@ -577,18 +678,16 @@ class DynamicMangaParser extends MangaParser {
             final pages = <MangaPage>[];
             for (int i = 0; i < rawList.length; i++) {
               final p = rawList[i];
-              final rawUrl = p is Map ? p[pageUrlKey]?.toString() : p?.toString();
+              final rawUrl = p is Map
+                  ? p[pageUrlKey]?.toString()
+                  : p?.toString();
               if (rawUrl == null || rawUrl.trim().isEmpty) continue;
 
               final imgUrl = rawUrl.trim().startsWith('http')
                   ? rawUrl.trim()
                   : 'https://$domain${rawUrl.trim()}';
 
-              pages.add(MangaPage(
-                index: i,
-                url: imgUrl,
-                headers: headers,
-              ));
+              pages.add(MangaPage(index: i, url: imgUrl, headers: headers));
             }
             return pages;
           }
@@ -608,15 +707,17 @@ class DynamicMangaParser extends MangaParser {
       final doc = html_parser.parse(res.data);
 
       final selectors = sourceConfig.selectors;
-      final pageSelector = selectors?['pages'] as String? ??
+      final pageSelector =
+          selectors?['pages'] as String? ??
           selectors?['page_images'] as String? ??
           selectors?['pageImages'] as String? ??
           'div.page-break img, div.reading-content img, #readerarea img, .reader-area img, img.js-page';
-      final pageAttrs = (selectors?['pageAttr'] as String? ??
-              selectors?['page_attr'] as String? ??
-              selectors?['page_image_attr'] as String? ??
-              selectors?['pageImageAttr'] as String?)
-          ?.split(',') ??
+      final pageAttrs =
+          (selectors?['pageAttr'] as String? ??
+                  selectors?['page_attr'] as String? ??
+                  selectors?['page_image_attr'] as String? ??
+                  selectors?['pageImageAttr'] as String?)
+              ?.split(',') ??
           ['data-src', 'data-lazy-src', 'src', 'data-original'];
 
       final imgEls = doc.querySelectorAll(pageSelector);
@@ -635,11 +736,13 @@ class DynamicMangaParser extends MangaParser {
 
         if (src == null || src.isEmpty) continue;
 
-        pages.add(MangaPage(
-          index: i,
-          url: src.startsWith('http') ? src : 'https://$domain$src',
-          headers: headers,
-        ));
+        pages.add(
+          MangaPage(
+            index: i,
+            url: src.startsWith('http') ? src : 'https://$domain$src',
+            headers: headers,
+          ),
+        );
       }
 
       return pages;
