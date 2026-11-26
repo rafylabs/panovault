@@ -43,6 +43,12 @@ Future<void> _loadSystemFonts() async {
 class FakeHistoryNotifier extends StateNotifier<AsyncValue<UnifiedHistoryData>> implements HistoryNotifier {
   final List<UnifiedHistoryItem> deletedBatches = [];
 
+  @override
+  Object? get lastRefreshError => null;
+
+  @override
+  StackTrace? get lastRefreshStackTrace => null;
+
   FakeHistoryNotifier(UnifiedHistoryData initialData) : super(AsyncValue.data(initialData));
 
   @override

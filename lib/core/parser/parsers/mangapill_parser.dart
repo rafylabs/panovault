@@ -145,13 +145,23 @@ class MangaPillParser extends MangaParser {
   }
 
   @override
-  Future<List<MangaChapter>> getChapters(Manga manga) async {
+  Future<List<MangaChapter>> getChapters(Manga manga) =>
+      _getChapters(manga, strict: false);
+
+  @override
+  Future<List<MangaChapter>> getChaptersForUpdates(Manga manga) =>
+      _getChapters(manga, strict: true);
+
+  Future<List<MangaChapter>> _getChapters(Manga manga, {required bool strict}) async {
     final res = await PanovaultHttpClient.instance.get<String>(
       manga.url,
       headers: headers,
       responseType: ResponseType.plain,
     );
 
+    if (strict && (res.data == null || res.data!.trim().isEmpty)) {
+      throw const FormatException('Missing MangaPill chapter response');
+    }
     if (res.data == null) return [];
     final doc = html_parser.parse(res.data);
 
@@ -161,6 +171,10 @@ class MangaPillParser extends MangaParser {
     for (int i = 0; i < chapterLinks.length; i++) {
       final el = chapterLinks[i];
       final href = el.attributes['href'];
+      if (strict && (href == null || href.trim().isEmpty ||
+          !RegExp(r'^/chapters/[^/]+/?$').hasMatch(Uri.parse(href).path))) {
+        throw const FormatException('Invalid MangaPill chapter link');
+      }
       if (href == null) continue;
 
       final title = el.text.trim();

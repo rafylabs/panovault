@@ -2,6 +2,18 @@
 
 All notable changes to Panovault will be documented in this file.
 
+## [v1.4.7] - 2026-11-26
+### Pembaruan Background dan History
+- Tambahkan pengecekan chapter latar belakang melalui WorkManager Android dan BGTaskScheduler iOS. Target interval 30 menit mengikuti keputusan OS, bukan jadwal pasti.
+- Batasi pekerjaan background dengan budget kooperatif 20 detik dan transaksi maksimal 100 chapter, serta checkpoint untuk melanjutkan pekerjaan terputus tanpa menimpa progres baca.
+- Tolak katalog rusak/parsial pada parser update dan cegah duplikasi update; pemuatan awal katalog tidak memicu notifikasi massal.
+- Perbaiki render History saat refresh: pertahankan data/kartu yang sudah tampil, serta hitung progres chapter dan alias sumber secara konsisten.
+- Sinkronkan versi aplikasi dan updater ke 1.4.7.
+
+### Catatan Pengujian Perangkat
+- Jadwal OS, konsumsi baterai, dan penerimaan notifikasi belum diverifikasi pada perangkat fisik. Android Doze, iOS Background App Refresh/Low Power Mode, dan force-stop/force-quit dapat menunda atau mencegah pengecekan.
+- Pengiriman notifikasi bersifat best-effort; update tetap tersimpan di daftar Updates bila posting notifikasi gagal.
+
 ## [v1.4.6] - 2026-11-25
 ### 🐛 Perbaikan Chapter, Versi, dan Ikon:
 - 📚 **Pagination Chapter Shinigami**: Gunakan `next_cursor` dari API; API saat ini mengabaikan `offset` sehingga sebelumnya halaman pertama terus terulang. Deduplicasi ID chapter mencegah duplikat bila API mengembalikan irisan tumpang tindih.

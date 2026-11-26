@@ -48,10 +48,12 @@ class LibraryNotifier extends StateNotifier<AsyncValue<List<Manga>>> {
   }
 
   Future<int> checkUpdates({bool silent = false}) async {
-    final count = await LibraryUpdateService.instance.checkForUpdates(silent: silent);
-    await loadManga();
-    ref.invalidate(updatesListProvider);
-    return count;
+    try {
+      return await LibraryUpdateService.instance.checkForUpdates(silent: silent);
+    } finally {
+      await loadManga();
+      ref.invalidate(updatesListProvider);
+    }
   }
 }
 

@@ -59,18 +59,26 @@ class LibraryScreen extends ConsumerWidget {
                       duration: Duration(seconds: 1),
                     ),
                   );
-                  final found = await ref.read(libraryProvider.notifier).checkUpdates(silent: false);
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          found > 0
-                              ? 'Ditemukan $found chapter baru!'
-                              : 'Tidak ada chapter baru untuk saat ini',
+                  try {
+                    final found = await ref.read(libraryProvider.notifier).checkUpdates(silent: false);
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            found > 0
+                                ? 'Ditemukan $found chapter baru!'
+                                : 'Tidak ada chapter baru untuk saat ini',
+                          ),
+                          duration: const Duration(seconds: 2),
                         ),
-                        duration: const Duration(seconds: 2),
-                      ),
-                    );
+                      );
+                    }
+                  } catch (_) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Sebagian pemeriksaan chapter gagal. Coba lagi.')),
+                      );
+                    }
                   }
                 },
               );
@@ -257,8 +265,16 @@ class LibraryScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 20),
                   ElevatedButton.icon(
-                    onPressed: () {
-                      ref.read(libraryProvider.notifier).checkUpdates(silent: false);
+                    onPressed: () async {
+                      try {
+                        await ref.read(libraryProvider.notifier).checkUpdates(silent: false);
+                      } catch (_) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Pemeriksaan chapter gagal. Coba lagi.')),
+                          );
+                        }
+                      }
                     },
                     icon: const Icon(Icons.sync),
                     label: const Text('Periksa Update Sekarang'),

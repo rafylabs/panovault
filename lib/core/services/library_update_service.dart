@@ -1,7 +1,10 @@
 import 'dart:async';
+
 import 'package:flutter/foundation.dart';
+
 import '../database/app_database.dart';
-import '../database/models/chapter_update.dart';
+import '../database/models/manga.dart';
+import '../database/models/chapter.dart';
 import '../parser/parser_registry.dart';
 import '../notifications/notification_service.dart';
 
@@ -9,121 +12,141 @@ class LibraryUpdateService {
   static final LibraryUpdateService instance = LibraryUpdateService._internal();
   LibraryUpdateService._internal();
 
+  @visibleForTesting
+  LibraryUpdateService.forTesting({
+    required AppDatabase database,
+    Future<List<MangaChapter>> Function(Manga)? fetch,
+    required Future<void> Function(Manga, List<MangaChapter>) notify,
+    Duration Function()? elapsed,
+  }) {
+    _elapsedOverride = elapsed;
+    _database = database;
+    _fetchOverride = fetch;
+    _notifyOverride = notify;
+  }
+
+  Duration Function()? _elapsedOverride;
+  AppDatabase? _database;
+  Future<List<MangaChapter>> Function(Manga)? _fetchOverride;
+  Future<void> Function(Manga, List<MangaChapter>)? _notifyOverride;
+  AppDatabase get _db => _database ?? AppDatabase.instance;
   final ValueNotifier<bool> isCheckingUpdates = ValueNotifier(false);
   final ValueNotifier<int> unseenUpdateCount = ValueNotifier(0);
-  Timer? _periodicTimer;
+  Timer? _startupTimer;
   bool _initialized = false;
 
   Future<void> init() async {
     if (_initialized) return;
-    _initialized = true;
-
     await NotificationService.instance.init();
     await refreshUnseenCount();
-
-    // Start periodic background check every 30 minutes while active
-    _periodicTimer?.cancel();
-    _periodicTimer = Timer.periodic(const Duration(minutes: 30), (_) {
-      checkForUpdates(silent: false);
-    });
-
-    // Check shortly after app launch
-    Future.delayed(const Duration(seconds: 4), () {
-      checkForUpdates(silent: false);
+    _initialized = true;
+    _startupTimer = Timer(const Duration(seconds: 4), () async {
+      try {
+        await checkForUpdates();
+      } catch (error, stack) {
+        debugPrint('Startup chapter check failed: $error\n$stack');
+      }
     });
   }
 
   Future<void> refreshUnseenCount() async {
-    final count = await AppDatabase.instance.getUnseenUpdateCount();
-    unseenUpdateCount.value = count;
+    unseenUpdateCount.value = await _db.getUnseenUpdateCount();
   }
 
-  void dispose() {
-    _periodicTimer?.cancel();
-  }
+  void dispose() => _startupTimer?.cancel();
 
-  Future<int> checkForUpdates({bool silent = false}) async {
-    if (isCheckingUpdates.value) return 0;
+  Future<int> checkForUpdates({bool silent = false, Duration? budget}) async {
+    if (isCheckingUpdates.value) {
+      throw StateError('Chapter check already running');
+    }
     isCheckingUpdates.value = true;
-
-    int totalNewChaptersFound = 0;
-
+    final watch = Stopwatch()..start();
+    Duration elapsed() => _elapsedOverride?.call() ?? watch.elapsed;
+    bool hasBudget() => budget == null || elapsed() < budget;
+    int total = 0;
+    final failures = <Object>[];
     try {
-      final favorites = await AppDatabase.instance.getFavorites();
-      if (favorites.isEmpty) return 0;
-
-      for (final manga in favorites) {
+      final favorites = await _db.getFavorites();
+      // Continue after the last attempted title on the next OS time slice.
+      final cursor = await _db.getLibraryUpdateCursor();
+      final previous = favorites.indexWhere((manga) => manga.id == cursor);
+      final ordered = previous < 0
+          ? favorites
+          : [...favorites.skip(previous + 1), ...favorites.take(previous + 1)];
+      for (final manga in ordered) {
+        final remaining = budget == null ? null : budget - elapsed();
+        if (remaining != null && remaining <= const Duration(seconds: 2)) {
+          failures.add(TimeoutException('Chapter check budget exhausted'));
+          break;
+        }
         try {
           final parser = ParserRegistry.instance.getParser(manga.sourceId);
-          if (parser == null) continue;
-
-          // Fetch latest chapters from remote source
-          final remoteChapters = await parser.getChapters(manga);
-          if (remoteChapters.isEmpty) continue;
-
-          // Get existing local chapters from SQLite
-          final localChapters = await AppDatabase.instance.getChapters(manga.id);
-
-          if (localChapters.isEmpty) {
-            // First time saving chapters: save without emitting spam notifications
-            await AppDatabase.instance.upsertChapters(remoteChapters);
-            continue;
+          if (_fetchOverride == null && parser == null) {
+            throw StateError('Missing source ${manga.sourceId}');
           }
-
-          final localIds = localChapters.map((c) => c.id).toSet();
-          final maxLocalNumber = localChapters.isEmpty
-              ? 0.0
-              : localChapters.map((c) => c.number).reduce((a, b) => a > b ? a : b);
-
-          // New chapters are those not in local database AND with chapter number >= maxLocalNumber
-          final newChapters = remoteChapters.where((c) {
-            return !localIds.contains(c.id) && c.number >= maxLocalNumber;
-          }).toList();
-
-          if (newChapters.isNotEmpty) {
-            newChapters.sort((a, b) => b.number.compareTo(a.number));
-            totalNewChaptersFound += newChapters.length;
-
-            // Save new chapters to SQLite
-            await AppDatabase.instance.upsertChapters(newChapters);
-
-            // Create update logs
-            final now = DateTime.now();
-            final updates = newChapters.map((ch) {
-              return ChapterUpdate(
-                id: 'upd_${manga.id}_${ch.id}_${now.millisecondsSinceEpoch}',
-                mangaId: manga.id,
-                mangaTitle: manga.title,
-                coverUrl: manga.coverUrl,
-                sourceId: manga.sourceId,
-                chapterId: ch.id,
-                chapterTitle: ch.title,
-                chapterNumber: ch.number,
-                detectedAt: now,
-              );
-            }).toList();
-
-            await AppDatabase.instance.saveChapterUpdates(updates);
-
-            if (!silent) {
-              final notifId = manga.id.hashCode.abs() % 100000;
-              await NotificationService.instance.showChapterUpdateNotification(
-                id: notifId,
-                mangaTitle: manga.title,
-                chapterTitle: newChapters.first.title,
-                newCount: newChapters.length,
-                payload: manga.id,
-              );
-            }
-          }
-        } catch (_) {}
+          final timeout = remaining == null
+              ? const Duration(seconds: 10)
+              : remaining - const Duration(seconds: 2);
+          final remote =
+              await (_fetchOverride?.call(manga) ??
+                      parser!.getChaptersForUpdates(manga))
+                  .timeout(
+                    timeout < const Duration(seconds: 10)
+                        ? timeout
+                        : const Duration(seconds: 10),
+                  );
+          // A timed-out network Future cannot later write to the database.
+          await _db.recordChapterUpdates(
+            manga,
+            remote,
+            shouldContinue: hasBudget,
+            onBatchCommitted: (added) async {
+              total += added.length;
+              if (!hasBudget()) {
+                throw TimeoutException('Chapter check budget exhausted');
+              }
+              if (!silent && added.isNotEmpty) {
+                added.sort((a, b) => b.number.compareTo(a.number));
+                if (_notifyOverride != null) {
+                  await _notifyOverride!(manga, added);
+                } else {
+                  await NotificationService.instance
+                      .showChapterUpdateNotification(
+                        id: notificationId(manga.id),
+                        mangaTitle: manga.title,
+                        chapterTitle: added.first.title,
+                        newCount: added.length,
+                        payload: manga.id,
+                      );
+                }
+              }
+              if (!hasBudget()) {
+                throw TimeoutException('Chapter check budget exhausted');
+              }
+            },
+          );
+        } catch (error, stack) {
+          failures.add(error);
+          debugPrint('Chapter check failed for ${manga.id}: $error\n$stack');
+        } finally {
+          await _db.setLibraryUpdateCursor(manga.id);
+        }
       }
-
       await refreshUnseenCount();
+      if (failures.isNotEmpty) {
+        throw StateError(
+          '${failures.length} chapter checks failed: ${failures.first}',
+        );
+      }
+      return total;
     } finally {
       isCheckingUpdates.value = false;
     }
-
-    return totalNewChaptersFound;
   }
+
+  // Stable across engine/process restarts, unlike String.hashCode.
+  static int notificationId(String value) => value.codeUnits.fold<int>(
+    0,
+    (hash, unit) => (hash * 31 + unit) & 0x7fffffff,
+  );
 }

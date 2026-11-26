@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:sqflite/sqflite.dart';
+
 import 'models/manga.dart';
 import 'models/chapter.dart';
 import 'models/history_entry.dart';
@@ -12,13 +13,21 @@ import '../parser/dynamic_manga_parser.dart';
 class AppDatabase {
   static final AppDatabase instance = AppDatabase._internal();
   Database? _db;
+  Future<Database>? _opening;
 
   AppDatabase._internal();
 
+  /// Uses an already-open database; its lifecycle belongs to the caller.
+  AppDatabase.withDatabase(Database database) : _db = database;
+
   Future<Database> get database async {
     if (_db != null) return _db!;
-    _db = await _initDatabase();
-    return _db!;
+    try {
+      _db = await (_opening ??= _initDatabase());
+      return _db!;
+    } finally {
+      _opening = null;
+    }
   }
 
   Future<Database> _initDatabase() async {
@@ -35,7 +44,13 @@ class AppDatabase {
     return await openDatabase(
       dbPath,
       version: 1,
+      onConfigure: (db) => db.execute('PRAGMA busy_timeout = 2000'),
       onOpen: (db) async {
+        await db.execute('CREATE TABLE IF NOT EXISTS library_update_catalog '
+            '(manga_id TEXT PRIMARY KEY, baseline INTEGER NOT NULL, '
+            'maximum REAL NOT NULL, last_id TEXT)');
+        await db.execute('CREATE TABLE IF NOT EXISTS library_update_state '
+            '(id INTEGER PRIMARY KEY, cursor TEXT)');
         await db.execute('''
           CREATE TABLE IF NOT EXISTS custom_sources (
             id TEXT PRIMARY KEY,
@@ -55,7 +70,9 @@ class AppDatabase {
             downloaded_at TEXT NOT NULL
           )
         ''');
-        await db.execute('CREATE INDEX IF NOT EXISTS idx_downloads_manga ON downloads(manga_id);');
+        await db.execute(
+          'CREATE INDEX IF NOT EXISTS idx_downloads_manga ON downloads(manga_id);',
+        );
 
         await db.execute('''
           CREATE TABLE IF NOT EXISTS chapter_updates (
@@ -71,17 +88,25 @@ class AppDatabase {
             is_seen INTEGER NOT NULL DEFAULT 0
           )
         ''');
-        await db.execute('CREATE INDEX IF NOT EXISTS idx_updates_detected ON chapter_updates(detected_at DESC);');
+        await db.execute(
+          'CREATE INDEX IF NOT EXISTS idx_updates_detected ON chapter_updates(detected_at DESC);',
+        );
 
         // Seamless schema migrations for scroll offset & read tracking
         try {
-          await db.execute('ALTER TABLE history ADD COLUMN scroll_offset REAL DEFAULT 0.0;');
+          await db.execute(
+            'ALTER TABLE history ADD COLUMN scroll_offset REAL DEFAULT 0.0;',
+          );
         } catch (_) {}
         try {
-          await db.execute('ALTER TABLE chapters ADD COLUMN last_read_offset REAL DEFAULT 0.0;');
+          await db.execute(
+            'ALTER TABLE chapters ADD COLUMN last_read_offset REAL DEFAULT 0.0;',
+          );
         } catch (_) {}
         try {
-          await db.execute('ALTER TABLE custom_sources ADD COLUMN config TEXT;');
+          await db.execute(
+            'ALTER TABLE custom_sources ADD COLUMN config TEXT;',
+          );
         } catch (_) {}
       },
       onCreate: (db, version) async {
@@ -173,12 +198,106 @@ class AppDatabase {
         ''');
 
         await db.execute('CREATE INDEX idx_manga_fav ON manga(is_favorite);');
-        await db.execute('CREATE INDEX idx_chapters_manga ON chapters(manga_id);');
-        await db.execute('CREATE INDEX idx_history_updated ON history(updated_at DESC);');
-        await db.execute('CREATE INDEX idx_downloads_manga ON downloads(manga_id);');
-        await db.execute('CREATE INDEX idx_updates_detected ON chapter_updates(detected_at DESC);');
+        await db.execute(
+          'CREATE INDEX idx_chapters_manga ON chapters(manga_id);',
+        );
+        await db.execute(
+          'CREATE INDEX idx_history_updated ON history(updated_at DESC);',
+        );
+        await db.execute(
+          'CREATE INDEX idx_downloads_manga ON downloads(manga_id);',
+        );
+        await db.execute(
+          'CREATE INDEX idx_updates_detected ON chapter_updates(detected_at DESC);',
+        );
       },
     );
+  }
+
+  /// Commit at most 100 catalog entries per transaction. Checkpoints survive
+  /// interrupted jobs, including the original baseline/update threshold.
+  /// Never timeout a transaction: SQLite/plugin Futures are not cancellable.
+  Future<List<MangaChapter>> recordChapterUpdates(
+    Manga manga,
+    List<MangaChapter> remote, {
+    bool Function()? shouldContinue,
+    Future<void> Function(List<MangaChapter>)? onBatchCommitted,
+  }) async {
+    final db = await database;
+    final added = <MangaChapter>[];
+    // Use unique IDs so a repeated source row cannot make a resume marker loop.
+    final catalog = {for (final chapter in remote) chapter.id: chapter}.values.toList()
+      ..sort((a, b) {
+        final number = a.number.compareTo(b.number);
+        return number != 0 ? number : a.id.compareTo(b.id);
+      });
+    final positions = {for (var i = 0; i < catalog.length; i++) catalog[i].id: i};
+    var complete = false;
+    while (!complete) {
+      if (shouldContinue != null && !shouldContinue()) {
+        throw StateError('Chapter persistence budget exhausted');
+      }
+      final batchAdded = await db.transaction((txn) async {
+        final states = await txn.query('library_update_catalog',
+            where: 'manga_id = ?', whereArgs: [manga.id]);
+        final Map<String, Object?> state;
+        if (states.isEmpty) {
+          final stats = (await txn.rawQuery(
+            'SELECT COUNT(*) AS count, MAX(number) AS maximum FROM chapters WHERE manga_id = ?',
+            [manga.id],
+          )).single;
+          state = {'manga_id': manga.id, 'baseline': stats['count'] == 0 ? 1 : 0,
+            'maximum': stats['maximum'] ?? 0, 'last_id': null};
+        } else {
+          state = Map.of(states.single);
+        }
+        final start = (positions[state['last_id']] ?? -1) + 1;
+        final end = (start + 100).clamp(0, catalog.length);
+        final batchAdded = <MangaChapter>[];
+        for (var i = start; i < end; i++) {
+          final chapter = catalog[i];
+          await txn.insert('chapters', chapter.copyWith(mangaId: manga.id).toMap(),
+              conflictAlgorithm: ConflictAlgorithm.ignore);
+          final inserted = Sqflite.firstIntValue(await txn.rawQuery('SELECT changes()'));
+          if (inserted == 0 || state['baseline'] == 1 ||
+              chapter.number < (state['maximum'] as num)) {
+            continue;
+          }
+          batchAdded.add(chapter);
+          await txn.insert('chapter_updates', ChapterUpdate(
+            id: 'upd_${manga.id}_${chapter.id}', mangaId: manga.id,
+            mangaTitle: manga.title, coverUrl: manga.coverUrl, sourceId: manga.sourceId,
+            chapterId: chapter.id, chapterTitle: chapter.title,
+            chapterNumber: chapter.number, detectedAt: DateTime.now(),
+          ).toMap(), conflictAlgorithm: ConflictAlgorithm.ignore);
+        }
+        complete = end == catalog.length;
+        if (complete) {
+          await txn.delete('library_update_catalog', where: 'manga_id = ?', whereArgs: [manga.id]);
+        } else {
+          state['last_id'] = catalog[end - 1].id;
+          await txn.insert('library_update_catalog', state,
+              conflictAlgorithm: ConflictAlgorithm.replace);
+        }
+        return batchAdded;
+      });
+      added.addAll(batchAdded);
+      if (onBatchCommitted != null) await onBatchCommitted(batchAdded);
+    }
+    added.sort((a, b) => b.number.compareTo(a.number));
+    return added;
+  }
+
+  Future<String?> getLibraryUpdateCursor() async {
+    final db = await database;
+    final rows = await db.query('library_update_state', where: 'id = 1');
+    return rows.isEmpty ? null : rows.first['cursor'] as String?;
+  }
+
+  Future<void> setLibraryUpdateCursor(String id) async {
+    final db = await database;
+    await db.insert('library_update_state', {'id': 1, 'cursor': id},
+        conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   // --- Manga Operations ---
@@ -233,7 +352,8 @@ class AppDatabase {
     final db = await database;
     final batch = db.batch();
     for (final ch in chapters) {
-      batch.rawInsert('''
+      batch.rawInsert(
+        '''
         INSERT INTO chapters (
           id, manga_id, title, number, url, scanlator, upload_date, is_read, last_read_page, last_read_offset, page_count
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -247,26 +367,30 @@ class AppDatabase {
           last_read_page = CASE WHEN excluded.last_read_page > 0 THEN excluded.last_read_page ELSE chapters.last_read_page END,
           last_read_offset = CASE WHEN excluded.last_read_page > 0 THEN excluded.last_read_offset ELSE chapters.last_read_offset END,
           page_count = CASE WHEN excluded.page_count > 0 THEN excluded.page_count ELSE chapters.page_count END
-      ''', [
-        ch.id,
-        ch.mangaId,
-        ch.title,
-        ch.number,
-        ch.url,
-        ch.scanlator,
-        ch.uploadDate?.toIso8601String(),
-        ch.isRead ? 1 : 0,
-        ch.lastReadPage,
-        ch.lastReadOffset,
-        ch.pageCount,
-      ]);
+      ''',
+        [
+          ch.id,
+          ch.mangaId,
+          ch.title,
+          ch.number,
+          ch.url,
+          ch.scanlator,
+          ch.uploadDate?.toIso8601String(),
+          ch.isRead ? 1 : 0,
+          ch.lastReadPage,
+          ch.lastReadOffset,
+          ch.pageCount,
+        ],
+      );
     }
     await batch.commit(noResult: true);
   }
 
   Future<List<MangaChapter>> getChapters(String mangaId) async {
     final db = await database;
-    final cleanId = mangaId.contains('_') ? mangaId.substring(mangaId.indexOf('_') + 1) : mangaId;
+    final cleanId = mangaId.contains('_')
+        ? mangaId.substring(mangaId.indexOf('_') + 1)
+        : mangaId;
     final results = await db.query(
       'chapters',
       where: 'manga_id = ? OR manga_id = ? OR manga_id LIKE ?',
@@ -289,14 +413,16 @@ class AppDatabase {
         final chId = d['chapter_id'] as String;
         if (!existingIds.contains(chId)) {
           final rawId = chId.split('_').last;
-          chapters.add(MangaChapter(
-            id: chId,
-            mangaId: mangaId,
-            title: 'Downloaded Chapter ($rawId)',
-            number: 1.0,
-            url: rawId,
-            pageCount: d['page_count'] as int? ?? 0,
-          ));
+          chapters.add(
+            MangaChapter(
+              id: chId,
+              mangaId: mangaId,
+              title: 'Downloaded Chapter ($rawId)',
+              number: 1.0,
+              url: rawId,
+              pageCount: d['page_count'] as int? ?? 0,
+            ),
+          );
         }
       }
     } catch (_) {}
@@ -319,7 +445,8 @@ class AppDatabase {
         ? mangaId.substring(mangaId.indexOf('_') + 1)
         : mangaId;
 
-    await db.rawUpdate('''
+    await db.rawUpdate(
+      '''
       UPDATE chapters
       SET 
         last_read_page = ?,
@@ -328,29 +455,34 @@ class AppDatabase {
       WHERE id = ?
          OR (url IS NOT NULL AND (url = ? OR url = ?))
          OR (? IS NOT NULL AND number = ? AND (manga_id = ? OR manga_id = ? OR manga_id LIKE ?))
-    ''', [
-      page,
-      scrollOffset,
-      isRead ? 1 : 0,
-      chapterId,
-      chapterUrl ?? chapterId,
-      chapterId,
-      chapterNumber,
-      chapterNumber ?? -999.0,
-      mangaId ?? '',
-      cleanMangaId ?? '',
-      cleanMangaId != null ? '%$cleanMangaId%' : '',
-    ]);
+    ''',
+      [
+        page,
+        scrollOffset,
+        isRead ? 1 : 0,
+        chapterId,
+        chapterUrl ?? chapterId,
+        chapterId,
+        chapterNumber,
+        chapterNumber ?? -999.0,
+        mangaId ?? '',
+        cleanMangaId ?? '',
+        cleanMangaId != null ? '%$cleanMangaId%' : '',
+      ],
+    );
 
     // Auto-mark all previous chapters as read if reading or completing a chapter
     if (mangaId != null && chapterNumber != null && chapterNumber > 0) {
       final targetNumber = isRead ? chapterNumber : chapterNumber - 0.001;
-      await db.rawUpdate('''
+      await db.rawUpdate(
+        '''
         UPDATE chapters
         SET is_read = 1
         WHERE (manga_id = ? OR manga_id = ? OR manga_id LIKE ?)
           AND number <= ?
-      ''', [mangaId, cleanMangaId, '%$cleanMangaId%', targetNumber]);
+      ''',
+        [mangaId, cleanMangaId, '%$cleanMangaId%', targetNumber],
+      );
     }
   }
 
@@ -366,52 +498,73 @@ class AppDatabase {
         ? mangaId.substring(mangaId.indexOf('_') + 1)
         : mangaId;
 
-    await db.rawUpdate('''
+    await db.rawUpdate(
+      '''
       UPDATE chapters
       SET is_read = ?
       WHERE id = ?
          OR (url IS NOT NULL AND (url = ? OR url = ?))
          OR (? IS NOT NULL AND number = ? AND (manga_id = ? OR manga_id = ? OR manga_id LIKE ?))
-    ''', [
-      isRead ? 1 : 0,
-      chapterId,
-      chapterUrl ?? chapterId,
-      chapterId,
-      chapterNumber,
-      chapterNumber ?? -999.0,
-      mangaId ?? '',
-      cleanMangaId ?? '',
-      cleanMangaId != null ? '%$cleanMangaId%' : '',
-    ]);
+    ''',
+      [
+        isRead ? 1 : 0,
+        chapterId,
+        chapterUrl ?? chapterId,
+        chapterId,
+        chapterNumber,
+        chapterNumber ?? -999.0,
+        mangaId ?? '',
+        cleanMangaId ?? '',
+        cleanMangaId != null ? '%$cleanMangaId%' : '',
+      ],
+    );
 
     // If marking as read, auto-mark all previous chapters as read
-    if (isRead && mangaId != null && chapterNumber != null && chapterNumber > 0) {
+    if (isRead &&
+        mangaId != null &&
+        chapterNumber != null &&
+        chapterNumber > 0) {
       await markPreviousChaptersRead(mangaId, chapterNumber);
     }
   }
 
-  Future<void> markPreviousChaptersRead(String mangaId, double chapterNumber) async {
+  Future<void> markPreviousChaptersRead(
+    String mangaId,
+    double chapterNumber,
+  ) async {
     final db = await database;
-    final cleanId = mangaId.contains('_') ? mangaId.substring(mangaId.indexOf('_') + 1) : mangaId;
-    await db.rawUpdate('''
+    final cleanId = mangaId.contains('_')
+        ? mangaId.substring(mangaId.indexOf('_') + 1)
+        : mangaId;
+    await db.rawUpdate(
+      '''
       UPDATE chapters
       SET is_read = 1
       WHERE (manga_id = ? OR manga_id = ? OR manga_id LIKE ?)
         AND number <= ?
-    ''', [mangaId, cleanId, '%$cleanId%', chapterNumber]);
+    ''',
+      [mangaId, cleanId, '%$cleanId%', chapterNumber],
+    );
   }
 
   Future<void> markAllChaptersRead(String mangaId, bool isRead) async {
     final db = await database;
-    final cleanId = mangaId.contains('_') ? mangaId.substring(mangaId.indexOf('_') + 1) : mangaId;
-    await db.rawUpdate('''
+    final cleanId = mangaId.contains('_')
+        ? mangaId.substring(mangaId.indexOf('_') + 1)
+        : mangaId;
+    await db.rawUpdate(
+      '''
       UPDATE chapters
       SET is_read = ?
       WHERE manga_id = ? OR manga_id = ? OR manga_id LIKE ?
-    ''', [isRead ? 1 : 0, mangaId, cleanId, '%$cleanId%']);
+    ''',
+      [isRead ? 1 : 0, mangaId, cleanId, '%$cleanId%'],
+    );
   }
 
-  Future<Map<String, double>> getReadingProgressForManga(List<String> mangaIds) async {
+  Future<Map<String, double>> getReadingProgressForManga(
+    List<String> mangaIds,
+  ) async {
     if (mangaIds.isEmpty) return {};
     final db = await database;
     final Set<String> allQueryIds = {};
@@ -424,28 +577,22 @@ class AppDatabase {
     final idList = allQueryIds.toList();
     final placeholders = List.filled(idList.length, '?').join(',');
 
-    try {
-      await db.rawUpdate('''
-        UPDATE chapters
-        SET is_read = 1
-        WHERE manga_id IN ($placeholders)
-          AND number < (
-            SELECT COALESCE(MAX(c2.number), 0)
-            FROM chapters c2
-            WHERE (c2.manga_id = chapters.manga_id OR c2.manga_id LIKE '%' || chapters.manga_id || '%')
-              AND (c2.is_read = 1 OR c2.last_read_page > 0)
-          )
-      ''', idList);
-    } catch (_) {}
-
+    // Infer earlier reads for display without mutating chapters on a History load.
+    // Group by the exact stored ID: another source's progress must not leak in.
     final rows = await db.rawQuery('''
-      SELECT 
-        manga_id,
-        COUNT(*) as total_chapters,
-        SUM(CASE WHEN is_read = 1 THEN 1 ELSE 0 END) as read_chapters
-      FROM chapters
-      WHERE manga_id IN ($placeholders)
-      GROUP BY manga_id
+      WITH latest_read AS (
+        SELECT manga_id,
+          MAX(CASE WHEN is_read = 1 OR last_read_page > 0 THEN number END) AS number
+        FROM chapters
+        WHERE manga_id IN ($placeholders)
+        GROUP BY manga_id
+      )
+      SELECT c.manga_id,
+        COUNT(*) AS total_chapters,
+        SUM(CASE WHEN c.is_read = 1 OR c.number < r.number THEN 1 ELSE 0 END) AS read_chapters
+      FROM latest_read r
+      INNER JOIN chapters c ON c.manga_id = r.manga_id
+      GROUP BY c.manga_id
     ''', idList);
 
     final Map<String, double> progress = {};
@@ -456,14 +603,24 @@ class AppDatabase {
       if (total > 0) {
         final val = (read / total).clamp(0.0, 1.0);
         progress[mangaId] = val;
-        if (mangaId.contains('_')) {
-          final clean = mangaId.substring(mangaId.indexOf('_') + 1);
-          progress[clean] = val;
-        } else {
-          for (final origId in mangaIds) {
-            if (origId.endsWith('_$mangaId')) {
-              progress[origId] = val;
-            }
+      }
+    }
+    // Exact stored IDs take precedence over compatibility aliases, regardless
+    // of SQLite's row order (e.g. two sources sharing the same raw ID).
+    for (final row in rows) {
+      final mangaId = row['manga_id'] as String;
+      if (mangaId.contains('_')) {
+        final clean = mangaId.substring(mangaId.indexOf('_') + 1);
+        progress.putIfAbsent(clean, () => progress[mangaId]!);
+      }
+    }
+    for (final row in rows) {
+      final mangaId = row['manga_id'] as String;
+      if (!mangaId.contains('_')) {
+        for (final id in mangaIds) {
+          if (id.contains('_') &&
+              id.substring(id.indexOf('_') + 1) == mangaId) {
+            progress.putIfAbsent(id, () => progress[mangaId]!);
           }
         }
       }
@@ -482,17 +639,13 @@ class AppDatabase {
     await upsertManga(manga);
     await upsertChapters([chapter]);
 
-    await db.insert(
-      'history',
-      {
-        'manga_id': manga.id,
-        'chapter_id': chapter.id,
-        'page': page,
-        'scroll_offset': scrollOffset,
-        'updated_at': DateTime.now().toIso8601String(),
-      },
-      conflictAlgorithm: ConflictAlgorithm.replace,
-    );
+    await db.insert('history', {
+      'manga_id': manga.id,
+      'chapter_id': chapter.id,
+      'page': page,
+      'scroll_offset': scrollOffset,
+      'updated_at': DateTime.now().toIso8601String(),
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   Future<List<HistoryEntry>> getHistory() async {
@@ -528,7 +681,9 @@ class AppDatabase {
         number: (row['ch_number'] as num).toDouble(),
         url: row['ch_url'] as String,
         scanlator: row['ch_scanlator'] as String?,
-        uploadDate: row['ch_upload_date'] != null ? DateTime.tryParse(row['ch_upload_date'] as String) : null,
+        uploadDate: row['ch_upload_date'] != null
+            ? DateTime.tryParse(row['ch_upload_date'] as String)
+            : null,
         isRead: (row['ch_is_read'] as int? ?? 0) == 1,
         lastReadPage: row['ch_last_read_page'] as int? ?? 0,
         lastReadOffset: (row['ch_last_read_offset'] as num?)?.toDouble() ?? 0.0,
@@ -540,7 +695,8 @@ class AppDatabase {
         chapter: chapter,
         page: row['hist_page'] as int? ?? 0,
         scrollOffset: (row['hist_scroll_offset'] as num?)?.toDouble() ?? 0.0,
-        updatedAt: DateTime.tryParse(row['hist_updated'] as String) ?? DateTime.now(),
+        updatedAt:
+            DateTime.tryParse(row['hist_updated'] as String) ?? DateTime.now(),
       );
     }).toList();
   }
@@ -552,23 +708,17 @@ class AppDatabase {
 
   Future<void> deleteHistoryEntry(String mangaId, String chapterId) async {
     final db = await database;
-    await db.delete(
-      'history',
-      where: 'manga_id = ?',
-      whereArgs: [mangaId],
-    );
+    await db.delete('history', where: 'manga_id = ?', whereArgs: [mangaId]);
   }
 
-  Future<void> deleteHistoryEntries(List<({String mangaId, String chapterId})> entries) async {
+  Future<void> deleteHistoryEntries(
+    List<({String mangaId, String chapterId})> entries,
+  ) async {
     if (entries.isEmpty) return;
     final db = await database;
     final batch = db.batch();
     for (final e in entries) {
-      batch.delete(
-        'history',
-        where: 'manga_id = ?',
-        whereArgs: [e.mangaId],
-      );
+      batch.delete('history', where: 'manga_id = ?', whereArgs: [e.mangaId]);
     }
     await batch.commit(noResult: true);
   }
@@ -578,11 +728,7 @@ class AppDatabase {
     final db = await database;
     final batch = db.batch();
     for (final id in ids) {
-      batch.delete(
-        'chapter_updates',
-        where: 'id = ?',
-        whereArgs: [id],
-      );
+      batch.delete('chapter_updates', where: 'id = ?', whereArgs: [id]);
     }
     await batch.commit(noResult: true);
   }
@@ -591,7 +737,9 @@ class AppDatabase {
   Future<List<CustomSourceConfig>> getCustomSources() async {
     final db = await database;
     final results = await db.query('custom_sources', orderBy: 'name ASC');
-    return results.map((r) => CustomSourceConfig.fromMap(Map<String, dynamic>.from(r))).toList();
+    return results
+        .map((r) => CustomSourceConfig.fromMap(Map<String, dynamic>.from(r)))
+        .toList();
   }
 
   Future<void> upsertCustomSource(CustomSourceConfig config) async {
@@ -605,11 +753,7 @@ class AppDatabase {
 
   Future<void> deleteCustomSource(String id) async {
     final db = await database;
-    await db.delete(
-      'custom_sources',
-      where: 'id = ?',
-      whereArgs: [id],
-    );
+    await db.delete('custom_sources', where: 'id = ?', whereArgs: [id]);
   }
 
   // --- Downloads Operations ---
@@ -620,17 +764,13 @@ class AppDatabase {
     required int pageCount,
   }) async {
     final db = await database;
-    await db.insert(
-      'downloads',
-      {
-        'chapter_id': chapterId,
-        'manga_id': mangaId,
-        'dir_path': dirPath,
-        'page_count': pageCount,
-        'downloaded_at': DateTime.now().toIso8601String(),
-      },
-      conflictAlgorithm: ConflictAlgorithm.replace,
-    );
+    await db.insert('downloads', {
+      'chapter_id': chapterId,
+      'manga_id': mangaId,
+      'dir_path': dirPath,
+      'page_count': pageCount,
+      'downloaded_at': DateTime.now().toIso8601String(),
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   Future<void> deleteDownload(String chapterId) async {
@@ -701,7 +841,9 @@ class AppDatabase {
 
   Future<int> getUnseenUpdateCount() async {
     final db = await database;
-    final res = await db.rawQuery('SELECT COUNT(*) as count FROM chapter_updates WHERE is_seen = 0');
+    final res = await db.rawQuery(
+      'SELECT COUNT(*) as count FROM chapter_updates WHERE is_seen = 0',
+    );
     return Sqflite.firstIntValue(res) ?? 0;
   }
 
